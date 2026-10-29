@@ -1,0 +1,12 @@
+data/
+out/
+video/
+*.pth
+*.mp4
+*.avi
+__pycache__/
+.venv/
+*.pyc
+
+weights/
+*.zip

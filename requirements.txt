@@ -1,0 +1,13 @@
+numpy
+opencv-python
+pillow
+imagehash
+scipy
+scikit-image
+matplotlib
+pandas
+torch
+torchvision
+segment-anything @ git+https://github.com/facebookresearch/segment-anything.git
+yt-dlp
+md2pdf
