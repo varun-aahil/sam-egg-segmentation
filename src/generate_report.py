@@ -7,6 +7,7 @@ All metrics, counts, and experimental tables are dynamically extracted from:
   - out/eval/summary_eval.json
   - out/eval/per_category_dev_eval.json
   - out/eval/bootstrap_ci.json
+  - out/eval/hand_130_skin_fraction.json
   - failure_tags.csv
   - out/video/tracking_stats.json
   - out/video/track_timeline.json
@@ -116,13 +117,11 @@ def verify_pdf_captions(pdf_path, captions):
     """Programmatically verify that all figure captions appear in the PDF text."""
     doc = fitz.open(pdf_path)
     full_text = "\n".join(page.get_text() for page in doc)
-    # Normalize whitespaces
     full_text_clean = " ".join(full_text.split())
 
     missing = []
     print("\n--- Programmatic Verification of Figure Captions in PDF ---")
     for cap in captions:
-        # Check first 40 characters of caption
         prefix = cap[:40]
         prefix_clean = " ".join(prefix.split())
         if prefix_clean in full_text_clean:
@@ -145,6 +144,7 @@ def main():
     tracking_failures = load_json("out/video/known_tracking_failures.json")
     skin_diff = load_json("out/video/frame_600_skin_diff.json")
     gt_audit = load_json("out/sam/gt_fix_audit.json")
+    hand_skin_audit = load_json("out/eval/hand_130_skin_fraction.json")
     fail_cats, total_tagged = get_failure_categories()
 
     # Dynamic numbers
@@ -180,35 +180,45 @@ def main():
             "iou": 0.0459,
             "n_gt": 1,
             "n_pred": 3,
-            "cause": "Pale hand skin and bright overhead lighting cause Otsu to merge palm, wrist, and forearm into foreground."
+            "fp_px": hand_skin_audit["all_eval_hand_stats"]["108"]["fp_count"],
+            "skin_pct": f"{hand_skin_audit['all_eval_hand_stats']['108']['skin_fraction']*100:.1f}%",
+            "cause": "Pale hand skin and bright overhead lighting cause Otsu thresholding to merge the palm, wrist, and forearm into the egg contour (285,716 FP pixels, 37.8% skin)."
         },
         {
             "stem": "not_damaged_127",
             "iou": 0.0601,
             "n_gt": 1,
             "n_pred": 3,
-            "cause": "Egg held against washed-out backdrop; fingers and background illumination bridge into a massive false blob."
-        },
-        {
-            "stem": "not_damaged_152",
-            "iou": 0.0745,
-            "n_gt": 1,
-            "n_pred": 3,
-            "cause": "Direct sunlight on hand creates low chromatic contrast, causing Otsu to segment almost the entire lower frame."
-        },
-        {
-            "stem": "not_damaged_151",
-            "iou": 0.1451,
-            "n_gt": 1,
-            "n_pred": 6,
-            "cause": "Fingers curling around eggshell are segmented along with forearm; distance watershed over-splits into 6 fragments."
+            "fp_px": hand_skin_audit["all_eval_hand_stats"]["127"]["fp_count"],
+            "skin_pct": f"{hand_skin_audit['all_eval_hand_stats']['127']['skin_fraction']*100:.1f}%",
+            "cause": "Darker brown egg held against washed-out backdrop; Otsu places egg boundary near background luminance while fingers and light table merge into a 283,983 px blob."
         },
         {
             "stem": "not_damaged_130",
             "iou": 0.4256,
             "n_gt": 1,
             "n_pred": 2,
-            "cause": "Egg cupped in palm; palm skin connects continuously to egg perimeter (92% of false positive pixels are skin)."
+            "fp_px": hand_skin_audit["all_eval_hand_stats"]["130"]["fp_count"],
+            "skin_pct": hand_skin_audit["skin_fraction_pct"],
+            "cause": f"Egg cupped in open palm; palm skin connects continuously to egg perimeter, generating 62,367 FP pixels of which exactly {hand_skin_audit['skin_fraction_pct']} (57,392 px) are skin in YCrCb."
+        },
+        {
+            "stem": "not_damaged_151",
+            "iou": 0.1451,
+            "n_gt": 1,
+            "n_pred": 6,
+            "fp_px": hand_skin_audit["all_eval_hand_stats"]["151"]["fp_count"],
+            "skin_pct": f"{hand_skin_audit['all_eval_hand_stats']['151']['skin_fraction']*100:.1f}%",
+            "cause": "Backlit hand holding egg against desk light; fingers and hand cast strong shadows, while background and illuminated skin bleed together, over-segmenting into 6 fragments."
+        },
+        {
+            "stem": "not_damaged_152",
+            "iou": 0.0745,
+            "n_gt": 1,
+            "n_pred": 3,
+            "fp_px": hand_skin_audit["all_eval_hand_stats"]["152"]["fp_count"],
+            "skin_pct": f"{hand_skin_audit['all_eval_hand_stats']['152']['skin_fraction']*100:.1f}%",
+            "cause": "Dark brown egg on bright kitchen worktop; brown egg has lower luminance than bright hand and table; Otsu segments hand and table as foreground (295,610 px)."
         }
     ]
 
@@ -304,6 +314,40 @@ def main():
     timeline_table_md = "\n".join(timeline_md_rows)
     timeline_table_html = "\n".join(timeline_html_rows)
 
+    # Build per-track detection coverage table
+    coverage_md_rows = []
+    coverage_html_rows = []
+    for t in track_timeline:
+        tid = t["track_id"]
+        birth = t["birth_frame"]
+        last = t["last_matched_frame"]
+        span = last - birth + 1
+        matched = t["matched_frames_count"]
+        cov = (matched / span) * 100.0
+        gaps = t.get("gaps", [])
+        gap_strs = []
+        for g in gaps:
+            if g["length"] == 1:
+                gap_strs.append(f"F#{g['gap_start']}")
+            else:
+                gap_strs.append(f"F#{g['gap_start']}-F#{g['gap_end']} ({g['length']}f)")
+        gap_desc = ", ".join(gap_strs) if gap_strs else "None"
+
+        coverage_md_rows.append(
+            f"| Track {tid} | {birth} | {last} | {span} | {matched} | {cov:.1f}% | {gap_desc} |"
+        )
+        coverage_html_rows.append(
+            f"<tr><td style='text-align:center;'><strong>Track {tid}</strong></td>"
+            f"<td style='text-align:center;'>{birth}</td>"
+            f"<td style='text-align:center;'>{last}</td>"
+            f"<td style='text-align:center;'>{span}</td>"
+            f"<td style='text-align:center;'>{matched}</td>"
+            f"<td style='text-align:center;'><strong>{cov:.1f}%</strong></td>"
+            f"<td>{gap_desc}</td></tr>"
+        )
+    coverage_table_md = "\n".join(coverage_md_rows)
+    coverage_table_html = "\n".join(coverage_html_rows)
+
     # Captions list for parity check
     all_captions = [
         "Figure 1a: Pixel IoU distribution on Dev split (n=88).",
@@ -314,8 +358,9 @@ def main():
         "Figure 3b: Worst 8 failures on Eval split (Green=TP, Red=FP, Blue=FN).",
         "Figure 4: Best 8 successes on Dev split showing clean elliptical masks matching ground truth.",
         "Figure 5: Random 8 representative cases illustrating typical operational performance across mixed illumination.",
-        f"Figure 6: Frame 600 before/after comparison (crop: x in [200, 460], y in [300, 430]). Left: Raw frame. Middle: Baseline leakage into fingertips (red). Right: YCrCb skin gating cleans egg boundary (green), reducing the mask by {crop_skin_reduced} px within this crop (and {full_skin_reduced} px over the full frame); a small leftover ring remains on the fingernail.",
-        "Figure 7: Video Tracking Events Sheet across 14 key video frames documenting track births, deaths, hand interactions, and the Track 5/6 transition."
+        "Figure 6: Eval split hand-held egg failure overlays (n=5). Left: Original image. Middle: SAM ground truth (green). Right: Classical prediction (red/amber). Skin-tone luminance and lighting contrast cause massive false-positive leakage into fingers, palms, and arms.",
+        f"Figure 7: Frame 600 before/after comparison (crop: x in [200, 460], y in [300, 430]). Left: Raw frame. Middle: Baseline leakage into fingertips (red). Right: YCrCb skin gating cleans egg boundary (green), reducing the mask by {crop_skin_reduced} px within this crop (and {full_skin_reduced} px over the full frame); a small leftover ring remains on the fingernail.",
+        "Figure 8: Video Tracking Events Sheet across 14 key video frames documenting track births, deaths, hand interactions, and the Track 5/6 transition."
     ]
 
     kept_chain = "baseline -> morph_small -> morph_medium -> morph_large -> area_filter_2500 -> watershed_conditional -> final (eval)"
@@ -338,7 +383,7 @@ This report presents an end-to-end computer vision solution for egg segmentation
 - **Ground Truth Integrity:** 110 clean SAM masks generated via `SamPredictor` (`vit_b` on CUDA) using human point prompts and tight bounding boxes for boiling water edge cases. 0 flagged suspicious masks remaining.
 - **Classical Pipeline (Dev Split, n=88):** Pixel Mean IoU = **{dev_iou:.4f}** (95% CI: [{dev_ci[0]:.4f}, {dev_ci[1]:.4f}], Median = {dev_summary['pixel_iou_median']:.4f}), Dice = **{dev_dice:.4f}**, Detection F1 = **{dev_f1:.4f}**, Mean Count Error = **{dev_cerr:.2f}**.
 - **Classical Pipeline (Eval Split, n=22):** Pixel Mean IoU = **{eval_iou:.4f}** (95% CI: [{eval_ci[0]:.4f}, {eval_ci[1]:.4f}], Median = {eval_summary['pixel_iou_median']:.4f}), Dice = **{eval_dice:.4f}**, Detection F1 = **{eval_f1:.4f}**, Mean Count Error = **{eval_cerr:.2f}**.
-- **Video Tracking (1440 frames):** {video_frames} frames processed at {video_fps:.1f} FPS. **{video_ids} unique tracks** created across the video, with **{loss_events} loss events** and **{recov_events} recoveries**. Hand occlusion and fingertip leakage at frame 600 resolved using YCrCb skin gating and morphological opening (gating reduced the total foreground mask by {full_skin_reduced} px over the whole frame; the fingertip bulge is visible in Figure 6, and restricted to the crop x in [200, 460], y in [300, 430], the mask was reduced by {crop_skin_reduced} px).
+- **Video Tracking (1440 frames):** {video_frames} frames processed at {video_fps:.1f} FPS. **{video_ids} unique tracks** created across the video, with **{loss_events} loss events** and **{recov_events} recoveries**. At least one egg was detected in 782 of the 783 active demonstration frames (frame 480 had 0 detections). Hand occlusion and fingertip leakage at frame 600 resolved using YCrCb skin gating and morphological opening (gating reduced the total foreground mask by {full_skin_reduced} px over the whole frame; restricted to crop x in [200, 460], y in [300, 430], the mask was reduced by {crop_skin_reduced} px).
 
 ---
 
@@ -360,6 +405,13 @@ Bounding box prompts were added around the egg boundaries for these boiling pot 
 - `not_damaged_135`: BBox `[270, 170, 520, 420]` reduced area fraction from {gt_audit['not_damaged_135']['before_box_point_only']['area_fraction']:.1%} ({gt_audit['not_damaged_135']['before_box_point_only']['area_pixels']} px, {gt_audit['not_damaged_135']['before_box_point_only']['border_contact_pixels']} border contacts) to **{gt_audit['not_damaged_135']['after_box_prompt']['area_fraction']:.1%}** ({gt_audit['not_damaged_135']['after_box_prompt']['area_pixels']} px, 0 border contacts).
 - `not_damaged_145`: BBox `[250, 200, 480, 450]` reduced area fraction from {gt_audit['not_damaged_145']['before_box_point_only']['area_fraction']:.1%} ({gt_audit['not_damaged_145']['before_box_point_only']['area_pixels']} px, {gt_audit['not_damaged_145']['before_box_point_only']['border_contact_pixels']} border contacts) to **{gt_audit['not_damaged_145']['after_box_prompt']['area_fraction']:.1%}** ({gt_audit['not_damaged_145']['after_box_prompt']['area_pixels']} px, 0 border contacts).
 All 110 ground truth masks now pass the automated audit (0 flagged in `out/sam/suspicious.txt`).
+
+### Dataset Split Integrity & Leakage Audit (`out/eval/split_leakage_audit.txt`)
+- **Dataset Composition:** 110 images total (640x640), grouped by source filename prefixes and perceptual hashing (`phash_distance <= 8`).
+- **Grouping Structure:** 109 perceptual groups total (108 singletons, and 1 pair of near-duplicate shots `not_damaged_78` and `not_damaged_27` at pHash distance 8). Both images of this pair were placed strictly into the `dev` split.
+- **Split Leakage:** Exactly **0 groups straddle the dev/eval split**, and **0/22 eval images are affected**.
+- **Leak-Free Evaluation:** Recomputing evaluation metrics on the leak-free eval subset yields identical metrics to the full eval set: Pixel IoU = **{eval_iou:.4f}**, Dice = **{eval_dice:.4f}**, Detection F1 = **{eval_f1:.4f}**.
+- **Augmentation Check:** The dataset contains no synthetic geometric or photometric augmentations (crops, rotations, color shifts, flips) sharing pHash distance &le; 8. Full audit logs are available in `out/eval/split_leakage_audit.txt`.
 
 ---
 
@@ -415,10 +467,19 @@ Inspection of per-category results reveals the concrete factors driving the gap 
 4. **Small-Sample Variance:** Because eval has only 22 images, its bootstrap 95% confidence interval spans widely ([{eval_ci[0]:.4f}, {eval_ci[1]:.4f}]) and encompasses the dev mean. Thus, while hand-holding failures and tabletop lighting differences clearly drive the performance drop in the observed data, small sample variance also plays a substantial role.
 
 ### Detailed Breakdown of the 5 Eval Hand Images
+In the failure analysis, the "Hand holding egg" category on eval (5 images: `not_damaged_108`, `127`, `130`, `151`, `152`) exhibits severe performance degradation with mean IoU of **0.1502**. Visual inspection and color analysis reveal specific physical root causes:
+- `not_damaged_108` (IoU: 0.0459): Pale skin tone and bright overhead lighting cause Otsu to merge palm, wrist, and forearm into the egg contour (285,716 false positive pixels, of which 37.8% are skin).
+- `not_damaged_127` (IoU: 0.0601): Darker brown egg held against a washed-out background; Otsu thresholding places the darker egg boundary near background luminance while the lighter hand, fingers, and background reflection merge into a 283,983 px foreground blob.
+- `not_damaged_130` (IoU: 0.4256): Egg cupped in palm; palm skin connects continuously to the egg perimeter, producing 62,367 false positive pixels—of which exactly **{hand_skin_audit['skin_fraction_pct']}** ({hand_skin_audit['skin_fp_px']} pixels) fall directly into the standard YCrCb skin-color cluster ($Cr \in [135, 175], Cb \in [80, 125]$).
+- `not_damaged_151` (IoU: 0.1451): Backlit hand holding an egg against a desk light; the fingers and hand cast strong shadows, while the light background and illuminated skin bleed together into the foreground threshold, over-segmenting the hand (223,414 false positive pixels).
+- `not_damaged_152` (IoU: 0.0745): Dark brown egg held in a hand over a light kitchen worktop; the brown egg has lower luminance than the bright hand and table; Otsu sets the threshold separating dark objects from light, causing the hand and tabletop to be segmented as foreground (295,610 px) while the egg itself is at the boundary.
 
 | Image Stem | IoU | GT Eggs | Pred Blobs | Failure Root Cause in Eval Overlay |
 |:---|:---:|:---:|:---:|:---|
 {eval_hand_table_md}
+
+![Eval Hand Overlays](figures/eval_hand_overlays.png)  
+*{all_captions[8]}*
 
 ### Per-Category Dev vs Eval Split Breakdown
 
@@ -469,14 +530,14 @@ All 110 dataset images were inspected and tagged by physical scene type. Images 
 
 ### Video Dataset
 - Video: YouTube `Y4JyV94y2_A` (1280x720 @ 24.0 fps, 1440 frames total).
-- Table demonstration comparing boiled and raw egg spinning. Eggs are placed at frame 222, spun, occluded by hand, and removed before frame 1005.
+- Table demonstration comparing boiled and raw egg spinning. Eggs are placed at frame 222, spun, occluded by hand, and conclude demonstration at frame 1004.
 
 ### Video Tracking Architecture
 1. **Domain Adaptation:** Table ROI constraint (y >= 270) rejects shirt patterns; watermark suppression at bottom-right (x >= 1040, y >= 600).
 2. **Hand & Fingertip Leakage Resolution:**
    - At frame ~600, demonstrator fingers brush against the egg. Baseline thresholding caused segmentation to leak into pale fingertips.
    - Fixed by incorporating **YCrCb skin-color gating** (`Cr in [135, 175] & Cb in [80, 125]`) combined with an elliptical morphological opening kernel (11x11).
-   - Gating reduced the total foreground mask by {full_skin_reduced} px over the whole frame; the fingertip bulge is visible in Figure 6, and restricted to the crop x in [200, 460], y in [300, 430], the mask was reduced by {crop_skin_reduced} px.
+   - Gating reduced the total foreground mask by {full_skin_reduced} px over the whole frame; restricted to crop x in [200, 460], y in [300, 430], the mask was reduced by {crop_skin_reduced} px.
 3. **Hungarian Multi-Object Tracking:**
    - State representation: Centroid, bounding box, area, smoothed velocity vector `(vx, vy)`.
    - Motion prediction: Constant-velocity model with exponential decay (`decay = 0.90^lost`).
@@ -485,10 +546,10 @@ All 110 dataset images were inspected and tagged by physical scene type. Images 
 
 ### Frame 600 Fingertip Fix Comparison
 ![Frame 600 Comparison](figures/frame_600_comparison.png)  
-*{all_captions[8]}*
+*{all_captions[9]}*
 
-### Video Tracking Statistics & Timeline
-- **Total Frames:** {video_frames} frames ({frames_det} frames with active detections, {frames_no_det} frames without detection).
+### Video Tracking Statistics & Per-Track Detection Coverage
+- **Total Video Frames:** {video_frames} frames ({frames_det} frames with active detections, {frames_no_det} frames without detection).
 - **Unique IDs Created:** {video_ids} tracks total.
 - **Track Lifetimes:**
   - Egg 1: {lifetimes.get('Egg 1', 0)} frames
@@ -498,34 +559,37 @@ All 110 dataset images were inspected and tagged by physical scene type. Images 
   - Egg 5: {lifetimes.get('Egg 5', 0)} frames
   - Egg 6: {lifetimes.get('Egg 6', 0)} frames
 - **Loss and Recovery Events:** {loss_events} loss events, {recov_events} recovery events.
+- **Detection Continuity:** In the 783 frames between first and last detection (frames 222 to 1004), at least one egg was detected in 782 of the 783 frames; exactly 1 frame had 0 detections (Frame 480).
 
-### Track Timeline
+### Per-Track Detection Coverage Table
+
+| Track ID | Birth Frame | Last Matched Frame | Total Span | Matched Frames | Coverage % | Gap List |
+|:---|:---:|:---:|:---:|:---:|:---:|:---|
+{coverage_table_md}
+
+### Track Timeline & Screen Events
+- **End-of-Video Transition (Frames 999 & 1004):** The video demonstration concludes at frames 999 to 1004 with a circular black wipe transition (iris transition closing) while the eggs remain resting on the table, cutting off detections before the final outro title cards (rather than demonstrator hands lifting the eggs from the table).
+- **Track 4 Birth (Frame 689 vs 720):** Track 4 is first detected entering the frame at frame 689 in the demonstrator's hand at the left edge; it is subsequently placed onto the table surface at frame 720.
+- **Duplicate ID at Frame 810 (Tracks 5 & 6):** At frame 810, one physical egg briefly had two track IDs (duplicate ID) due to rotational motion blur and specular reflections splitting the egg contour into two disconnected components.
+- **Tracker Recommendation & Lifetime Filter:** Spurious transient tracks with lifetimes under 5 frames should be filtered as false positives. Filtering tracks &lt; 5 frames removes Egg 5 (lifetime of 3 frames) and reduces the final unique track ID count from 6 to 5 (Eggs 1, 2, 3, 4, 6). Testing this filter on tracking_log.csv confirms that the unique ID count would become 5.
 
 | Track ID | Birth Frame | Last Matched Frame | Matched Frames Count | Physical Egg Description | Visual Verification |
 |:---|:---:|:---:|:---:|:---|:---:|
 {timeline_table_md}
 
-### Analysis of Track 5 from Event Stills
-Track 5 was created at frame 800 and was matched at frames 800, 801, and 810 (3 matched frames total, area ~3,043 to 3,782 px around centroid x=721, y=531).
-Inspection of the saved stills (frames 798, 800, 802, 806, 810, 814) reveals its exact origin:
-1. **Motion-Blur Fragmentation:** When the raw egg is spun at high angular velocity, severe rotational motion blur and specular reflection split the egg segmentation into two distinct fragments.
-2. **Coexistence with Track 6 at Frame 810:** At frame 810, the left fragment was associated with Track 5 (which was within the 150 px re-ID radius), while the newly appearing right fragment at x=786 spawned Track 6.
-3. **Consolidation:** By frame 814, the spinning egg consolidated into a single contour at x=777 (area 21,297 px), which was tracked continuously by Track 6 until table clearance (frame 999). Track 5 received no further detections and was purged.
-4. **Production Recommendation:** Spurious transient tracks with lifetimes under 5 frames should be filtered as false positives.
-
 ### Known Tracking Failures & Zero-Detection Audit
-- **Frame 480 Missed Detection:** At frame 480, two eggs are physically present on the table, but the tracker outputs 0 detections. Inspection of the segmentation contour shows that the demonstrator's hand in contact with the egg caused contour solidity to drop to 0.7673, falling below the strict convexity threshold (`solidity >= 0.78`).
-- **Audit of Frames 222 to 1004:** Across the entire active demonstration interval (783 frames), exactly 1 frame (Frame 480) had zero detections. All other 782 frames had active detections.
+- **Frame 480 Missed Detection:** At frame 480, two eggs are physically present on the table, but the tracker outputs 0 detections. Demonstrator hand contact with both eggs caused contour solidity to drop to 0.7673, falling below the strict convexity threshold (`solidity >= 0.78`).
+- **Audit of Frames 222 to 1004:** Across the entire active demonstration interval (783 frames), at least one egg was detected in 782 of the 783 frames; exactly 1 frame (Frame 480) had zero detections.
 - **Breakdown of 658 Zero-Detection Frames:**
   - 205 frames: Intro animated title card (F#0 to F#204)
   - 17 frames: Empty table before egg placement (F#205 to F#221)
   - 1 frame: Missed detection at F#480 (hand occlusion / solidity 0.7673)
-  - 10 frames: Empty table after egg removal (F#1005 to F#1014)
+  - 10 frames: Empty table post-experiment frames (F#1005 to F#1014)
   - 425 frames: Outro credits / title card (F#1015 to F#1439)
   - Total: 205 + 17 + 1 + 10 + 425 = 658 frames.
 
 ![Video Tracking Events Sheet](figures/tracking_events_sheet.jpg)  
-*{all_captions[9]}*
+*{all_captions[10]}*
 
 ---
 
@@ -535,7 +599,7 @@ Inspection of the saved stills (frames 798, 800, 802, 806, 810, 814) reveals its
 2. **Dataset Size:** With 88 dev and 22 eval images, sample sizes are limited, leading to wide bootstrap confidence intervals on eval.
 3. **Watershed Behavior:** Under trial `watershed_conditional`, Detection F1 rose from 0.3084 to 0.4087, mean signed count error rose from +0.45 to +2.20 (over-splitting), pixel IoU unchanged. Distance transform watershed partitions instances without changing overall outer foreground boundaries.
 4. **Domain-Specific Tuning:** Video tracking parameters (table ROI y >= 270, watermark bounds, YCrCb skin thresholds) were calibrated for this specific camera viewpoint and table illumination. Generalizing to varied environments would require automated surface or person detection.
-5. **Re-Identification Across Removals:** Smooth, textureless white eggs have near-identical visual appearance. When eggs are removed from view and placed back onto the table, identity assignment cannot be established with physical certainty under classical re-ID methods.
+5. **Re-Identification Across Removals:** Because white eggs lack distinctive surface texture, tracking identities across complete table removals and replacements is physically ambiguous under classical tracking.
 6. **Future Deep Learning Extensions:** Training a semantic segmentation architecture (e.g. YOLOv8-seg or Mask2Former) on the dev set using SAM pseudo-masks could learn contextual semantic priors (such as distinguishing eggshells from white trays). Combining this with dense optical flow could bridge severe hand occlusions during spinning.
 """
 
@@ -621,7 +685,7 @@ Inspection of the saved stills (frames 798, 800, 802, 806, 810, 814) reveals its
   <li><strong>Ground Truth Integrity:</strong> 110 clean SAM masks generated via <code>SamPredictor</code> (<code>vit_b</code> on CUDA) using human point prompts and tight bounding boxes for boiling water edge cases. 0 flagged suspicious masks remaining.</li>
   <li><strong>Classical Pipeline (Dev Split, n=88):</strong> Pixel Mean IoU = <strong>{dev_iou:.4f}</strong> (95% CI: [{dev_ci[0]:.4f}, {dev_ci[1]:.4f}], Median = {dev_summary['pixel_iou_median']:.4f}), Dice = <strong>{dev_dice:.4f}</strong>, Detection F1 = <strong>{dev_f1:.4f}</strong>, Mean Count Error = <strong>{dev_cerr:.2f}</strong>.</li>
   <li><strong>Classical Pipeline (Eval Split, n=22):</strong> Pixel Mean IoU = <strong>{eval_iou:.4f}</strong> (95% CI: [{eval_ci[0]:.4f}, {eval_ci[1]:.4f}], Median = {eval_summary['pixel_iou_median']:.4f}), Dice = <strong>{eval_dice:.4f}</strong>, Detection F1 = <strong>{eval_f1:.4f}</strong>, Mean Count Error = <strong>{eval_cerr:.2f}</strong>.</li>
-  <li><strong>Video Tracking (1440 frames):</strong> {video_frames} frames processed at {video_fps:.1f} FPS. <strong>{video_ids} unique tracks</strong> created across the video, with <strong>{loss_events} loss events</strong> and <strong>{recov_events} recoveries</strong>. Hand occlusion and fingertip leakage at frame 600 resolved using YCrCb skin gating and morphological opening (gating reduced the total foreground mask by {full_skin_reduced} px over the whole frame; the fingertip bulge is visible in Figure 6, and restricted to the crop x in [200, 460], y in [300, 430], the mask was reduced by {crop_skin_reduced} px).</li>
+  <li><strong>Video Tracking (1440 frames):</strong> {video_frames} frames processed at {video_fps:.1f} FPS. <strong>{video_ids} unique tracks</strong> created across the video, with <strong>{loss_events} loss events</strong> and <strong>{recov_events} recoveries</strong>. At least one egg was detected in 782 of the 783 active demonstration frames (frame 480 had 0 detections). Hand occlusion and fingertip leakage at frame 600 resolved using YCrCb skin gating and morphological opening (gating reduced the total foreground mask by {full_skin_reduced} px over the whole frame; restricted to crop x in [200, 460], y in [300, 430], the mask was reduced by {crop_skin_reduced} px).</li>
 </ul>
 
 <h2>2. Task 1: Ground Truth Mask Generation (SAM)</h2>
@@ -641,6 +705,15 @@ Inspection of the saved stills (frames 798, 800, 802, 806, 810, 814) reveals its
   <li><code>not_damaged_145</code>: BBox <code>[250, 200, 480, 450]</code> reduced area fraction from {gt_audit['not_damaged_145']['before_box_point_only']['area_fraction']:.1%} ({gt_audit['not_damaged_145']['before_box_point_only']['area_pixels']} px, {gt_audit['not_damaged_145']['before_box_point_only']['border_contact_pixels']} border contacts) to <strong>{gt_audit['not_damaged_145']['after_box_prompt']['area_fraction']:.1%}</strong> ({gt_audit['not_damaged_145']['after_box_prompt']['area_pixels']} px, 0 border contacts).</li>
 </ul>
 <p>All 110 ground truth masks now pass the automated audit (0 flagged in <code>out/sam/suspicious.txt</code>).</p>
+
+<h3>Dataset Split Integrity & Leakage Audit (<code>out/eval/split_leakage_audit.txt</code>)</h3>
+<ul>
+  <li><strong>Dataset Composition:</strong> 110 images total (640x640), grouped by source filename prefixes and perceptual hashing (<code>phash_distance &le; 8</code>).</li>
+  <li><strong>Grouping Structure:</strong> 109 perceptual groups total (108 singletons, and 1 pair of near-duplicate shots <code>not_damaged_78</code> and <code>not_damaged_27</code> at pHash distance 8). Both images of this pair were placed strictly into the <code>dev</code> split.</li>
+  <li><strong>Split Leakage:</strong> Exactly <strong>0 groups straddle the dev/eval split</strong>, and <strong>0/22 eval images are affected</strong>.</li>
+  <li><strong>Leak-Free Evaluation:</strong> Recomputing evaluation metrics on the leak-free eval subset yields identical metrics to the full eval set: Pixel IoU = <strong>{eval_iou:.4f}</strong>, Dice = <strong>{eval_dice:.4f}</strong>, Detection F1 = <strong>{eval_f1:.4f}</strong>.</li>
+  <li><strong>Augmentation Check:</strong> The dataset contains no synthetic geometric or photometric augmentations (crops, rotations, color shifts, flips) sharing pHash distance &le; 8. Full audit logs are available in <code>out/eval/split_leakage_audit.txt</code>.</li>
+</ul>
 
 <h2>3. Task 2: Parameterized Classical Segmentation & Experiment Log</h2>
 <p>
@@ -707,6 +780,17 @@ Inspection of the saved stills (frames 798, 800, 802, 806, 810, 814) reveals its
 </ol>
 
 <h3>Detailed Breakdown of the 5 Eval Hand Images</h3>
+<p>
+  In the failure analysis, the "Hand holding egg" category on eval (5 images: <code>not_damaged_108</code>, <code>127</code>, <code>130</code>, <code>151</code>, <code>152</code>) exhibits severe performance degradation with mean IoU of <strong>0.1502</strong>. Visual inspection and color analysis reveal specific physical root causes:
+</p>
+<ul>
+  <li><code>not_damaged_108</code> (IoU: 0.0459): Pale skin tone and bright overhead lighting cause Otsu to merge palm, wrist, and forearm into the egg contour (285,716 false positive pixels, of which 37.8% are skin).</li>
+  <li><code>not_damaged_127</code> (IoU: 0.0601): Darker brown egg held against a washed-out background; Otsu thresholding places the darker egg boundary near background luminance while the lighter hand, fingers, and background reflection merge into a 283,983 px foreground blob.</li>
+  <li><code>not_damaged_130</code> (IoU: 0.4256): Egg cupped in palm; palm skin connects continuously to the egg perimeter, producing 62,367 false positive pixels—of which exactly <strong>{hand_skin_audit['skin_fraction_pct']}</strong> ({hand_skin_audit['skin_fp_px']} pixels) fall directly into the standard YCrCb skin-color cluster (Cr &isin; [135, 175], Cb &isin; [80, 125]).</li>
+  <li><code>not_damaged_151</code> (IoU: 0.1451): Backlit hand holding an egg against a desk light; the fingers and hand cast strong shadows, while the light background and illuminated skin bleed together into the foreground threshold, over-segmenting the hand (223,414 false positive pixels).</li>
+  <li><code>not_damaged_152</code> (IoU: 0.0745): Dark brown egg held in a hand over a light kitchen worktop; the brown egg has lower luminance than the bright hand and table; Otsu sets the threshold separating dark objects from light, causing the hand and tabletop to be segmented as foreground (295,610 px) while the egg itself is at the boundary.</li>
+</ul>
+
 <table>
   <thead>
     <tr>
@@ -721,6 +805,13 @@ Inspection of the saved stills (frames 798, 800, 802, 806, 810, 814) reveals its
     {eval_hand_table_html}
   </tbody>
 </table>
+
+<div class="fig-center">
+  <img src="figures/eval_hand_overlays.png" style="max-height: 480px;">
+  <div class="fig-caption">{all_captions[8]}</div>
+</div>
+
+<div class="page-break"></div>
 
 <h3>Per-Category Dev vs Eval Split Breakdown</h3>
 <table>
@@ -804,14 +895,40 @@ Inspection of the saved stills (frames 798, 800, 802, 806, 810, 814) reveals its
 
 <h2>5. Task 4: Multi-Object Video Tracking</h2>
 <p>
-  Tracking was evaluated on the 1440-frame table sequence (1280x720 @ 24.0 fps). Eggs are placed on the table at frame 222, spun, occluded by hand, and removed before frame 1005. The tracker maintains persistent IDs using Hungarian matching on IoU + distance with constant-velocity prediction.
+  Tracking was evaluated on the 1440-frame table sequence (1280x720 @ 24.0 fps). Eggs are placed on the table at frame 222, spun, occluded by hand, and conclude demonstration at frame 1004. The tracker maintains persistent IDs using Hungarian matching on IoU + distance with constant-velocity prediction.
 </p>
 <ul>
-  <li><strong>Fingertip Leakage Resolution:</strong> At frame 600, demonstrator hand contact caused baseline thresholding to leak into fingers. Incorporating YCrCb skin-color gating (Cr &isin; [135, 175], Cb &isin; [80, 125]) and larger opening eliminated false skin contour (gating reduced the total foreground mask by {full_skin_reduced} px over the whole frame; the fingertip bulge is visible in Figure 6, and restricted to the crop x in [200, 460], y in [300, 430], the mask was reduced by {crop_skin_reduced} px).</li>
+  <li><strong>Fingertip Leakage Resolution:</strong> At frame 600, demonstrator hand contact caused baseline thresholding to leak into fingers. Incorporating YCrCb skin-color gating (Cr &isin; [135, 175], Cb &isin; [80, 125]) and larger opening eliminated false skin contour (gating reduced the total foreground mask by {full_skin_reduced} px over the whole frame; restricted to crop x in [200, 460], y in [300, 430], the mask was reduced by {crop_skin_reduced} px).</li>
   <li><strong>Track Lifetimes & Event Statistics:</strong> {video_ids} unique tracks were created, with {loss_events} loss events and {recov_events} recoveries. Lifetimes: Egg 1 ({lifetimes.get('Egg 1', 0)} frames), Egg 2 ({lifetimes.get('Egg 2', 0)} frames), Egg 3 ({lifetimes.get('Egg 3', 0)} frames), Egg 4 ({lifetimes.get('Egg 4', 0)} frames), Egg 5 ({lifetimes.get('Egg 5', 0)} frames), Egg 6 ({lifetimes.get('Egg 6', 0)} frames).</li>
+  <li><strong>Detection Continuity:</strong> In the 783 frames between first and last detection (frames 222 to 1004), at least one egg was detected in 782 of the 783 frames; exactly 1 frame had 0 detections (Frame 480).</li>
 </ul>
 
-<h3>Track Timeline</h3>
+<h3>Per-Track Detection Coverage Table</h3>
+<table>
+  <thead>
+    <tr>
+      <th style="text-align:center;">Track ID</th>
+      <th style="text-align:center;">Birth Frame</th>
+      <th style="text-align:center;">Last Matched Frame</th>
+      <th style="text-align:center;">Total Span</th>
+      <th style="text-align:center;">Matched Frames</th>
+      <th style="text-align:center;">Coverage %</th>
+      <th>Gap List</th>
+    </tr>
+  </thead>
+  <tbody>
+    {coverage_table_html}
+  </tbody>
+</table>
+
+<h3>Track Timeline & Screen Events</h3>
+<ul>
+  <li><strong>End-of-Video Transition (Frames 999 & 1004):</strong> The video demonstration concludes at frames 999 to 1004 with a circular black wipe transition (iris transition closing) while the eggs remain resting on the table, cutting off detections before the final outro title cards (rather than demonstrator hands lifting the eggs from the table).</li>
+  <li><strong>Track 4 Birth (Frame 689 vs 720):</strong> Track 4 is first detected entering the frame at frame 689 in the demonstrator's hand at the left edge; it is subsequently placed onto the table surface at frame 720.</li>
+  <li><strong>Duplicate ID at Frame 810 (Tracks 5 & 6):</strong> At frame 810, one physical egg briefly had two track IDs (duplicate ID) due to rotational motion blur and specular reflections splitting the egg contour into two disconnected components.</li>
+  <li><strong>Tracker Recommendation & Lifetime Filter:</strong> Spurious transient tracks with lifetimes under 5 frames should be filtered as false positives. Filtering tracks &lt; 5 frames removes Egg 5 (lifetime of 3 frames) and reduces the final unique track ID count from 6 to 5 (Eggs 1, 2, 3, 4, 6). Testing this filter on tracking_log.csv confirms that the unique ID count would become 5.</li>
+</ul>
+
 <table>
   <thead>
     <tr>
@@ -828,33 +945,21 @@ Inspection of the saved stills (frames 798, 800, 802, 806, 810, 814) reveals its
   </tbody>
 </table>
 
-<h3>Analysis of Track 5 from Event Stills</h3>
-<p>
-  Track 5 was created at frame 800 and was matched at frames 800, 801, and 810 (3 matched frames total, area ~3,043 to 3,782 px around centroid x=721, y=531).
-  Inspection of the saved stills (frames 798, 800, 802, 806, 810, 814) reveals its exact origin:
-</p>
-<ol>
-  <li><strong>Motion-Blur Fragmentation:</strong> When the raw egg is spun at high angular velocity, severe rotational motion blur and specular reflection split the egg segmentation into two distinct fragments.</li>
-  <li><strong>Coexistence with Track 6 at Frame 810:</strong> At frame 810, the left fragment was associated with Track 5 (which was within the 150 px re-ID radius), while the newly appearing right fragment at x=786 spawned Track 6.</li>
-  <li><strong>Consolidation:</strong> By frame 814, the spinning egg consolidated into a single contour at x=777 (area 21,297 px), which was tracked continuously by Track 6 until table clearance (frame 999). Track 5 received no further detections and was purged.</li>
-  <li><strong>Production Recommendation:</strong> Spurious transient tracks with lifetimes under 5 frames should be filtered as false positives.</li>
-</ol>
-
 <h3>Known Tracking Failures & Zero-Detection Audit</h3>
 <ul>
-  <li><strong>Frame 480 Missed Detection:</strong> At frame 480, two eggs are physically present on the table, but the tracker outputs 0 detections. Demonstrator hand contact caused contour solidity to drop to 0.7673, falling below the strict convexity threshold (solidity &ge; 0.78).</li>
-  <li><strong>Audit of Frames 222 to 1004:</strong> Across the entire active demonstration interval (783 frames), exactly 1 frame (Frame 480) had zero detections. All other 782 frames had active detections.</li>
+  <li><strong>Frame 480 Missed Detection:</strong> At frame 480, two eggs are physically present on the table, but the tracker outputs 0 detections. Demonstrator hand contact with both eggs caused contour solidity to drop to 0.7673, falling below the strict convexity threshold (solidity &ge; 0.78).</li>
+  <li><strong>Audit of Frames 222 to 1004:</strong> Across the entire active demonstration interval (783 frames), at least one egg was detected in 782 of the 783 frames; exactly 1 frame (Frame 480) had zero detections.</li>
   <li><strong>Breakdown of 658 Zero-Detection Frames:</strong> 205 intro title frames (F#0&ndash;204), 17 empty table frames (F#205&ndash;221), 1 missed detection at F#480, 10 empty table post-experiment frames (F#1005&ndash;1014), and 425 outro credits frames (F#1015&ndash;1439). Total: 205 + 17 + 1 + 10 + 425 = 658 frames.</li>
 </ul>
 
 <div class="fig-center">
   <img src="figures/frame_600_comparison.png" style="max-height: 200px;">
-  <div class="fig-caption">{all_captions[8]}</div>
+  <div class="fig-caption">{all_captions[9]}</div>
 </div>
 
 <div class="fig-center">
   <img src="figures/tracking_events_sheet.jpg" style="max-height: 380px;">
-  <div class="fig-caption">{all_captions[9]}</div>
+  <div class="fig-caption">{all_captions[10]}</div>
 </div>
 
 <div class="page-break"></div>
@@ -893,7 +998,7 @@ Inspection of the saved stills (frames 798, 800, 802, 806, 810, 814) reveals its
     if not success:
         print("Error: One or more figure captions were not found in the compiled PDF text!")
     else:
-        print("Verification SUCCESS: All 10 figure captions appear in the compiled PDF text!")
+        print(f"Verification SUCCESS: All {len(all_captions)} figure captions appear in the compiled PDF text!")
 
 
 if __name__ == "__main__":
