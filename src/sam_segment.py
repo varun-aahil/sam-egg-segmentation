@@ -25,20 +25,32 @@ def load_point_prompts(points_file):
 
 
 def masks_from_points(predictor, egg_prompts):
-    """Predict one mask per egg prompt using SamPredictor (multimask_output=True)."""
+    """Predict one mask per egg prompt using SamPredictor (points + optional box)."""
     masks = []
     for egg in egg_prompts:
         pts = egg.get("points", [])
         lbls = egg.get("labels", [])
-        if not pts:
+        box = egg.get("box", None)
+
+        box_arr = np.array(box, dtype=np.float32) if box is not None and len(box) == 4 else None
+        coords = np.array(pts, dtype=np.float32) if pts else None
+        point_labels = np.array(lbls, dtype=np.int32) if lbls else None
+
+        if coords is not None and len(coords) > 0:
+            pred_masks, scores, _ = predictor.predict(
+                point_coords=coords,
+                point_labels=point_labels,
+                box=box_arr,
+                multimask_output=True
+            )
+        elif box_arr is not None:
+            pred_masks, scores, _ = predictor.predict(
+                box=box_arr,
+                multimask_output=True
+            )
+        else:
             continue
-        coords = np.array(pts, dtype=np.float32)
-        labels = np.array(lbls, dtype=np.int32)
-        pred_masks, scores, _ = predictor.predict(
-            point_coords=coords,
-            point_labels=labels,
-            multimask_output=True
-        )
+
         best_idx = int(np.argmax(scores))
         masks.append(pred_masks[best_idx])
     return masks
@@ -79,48 +91,14 @@ def draw_overlay(img_bgr, labels):
     return over
 
 
-def build_contact_sheets(overlay_dir, out_dir, cols=5, rows=6, thumb_size=200):
-    """Tile overlay images into contact sheets for rapid visual review."""
-    overlay_paths = sorted(Path(overlay_dir).glob("*.jpg"))
-    if not overlay_paths:
-        print("No overlays found for contact sheet.")
-        return
-
-    out_p = Path(out_dir)
-    out_p.mkdir(parents=True, exist_ok=True)
-
-    per_sheet = cols * rows
-    num_sheets = math.ceil(len(overlay_paths) / per_sheet)
-
-    print(f"Creating {num_sheets} contact sheet(s) for {len(overlay_paths)} overlays...")
-    for s_idx in range(num_sheets):
-        batch = overlay_paths[s_idx * per_sheet:(s_idx + 1) * per_sheet]
-        grid = np.zeros((rows * thumb_size, cols * thumb_size, 3), dtype=np.uint8)
-
-        for b_i, p in enumerate(batch):
-            r = b_i // cols
-            c = b_i % cols
-            img = cv2.imread(str(p))
-            if img is not None:
-                thumb = cv2.resize(img, (thumb_size, thumb_size), interpolation=cv2.INTER_AREA)
-                # Label with shortened name at top
-                short_name = p.stem.split(".rf.")[0]
-                cv2.rectangle(thumb, (0, 0), (thumb_size, 20), (0, 0, 0), -1)
-                cv2.putText(thumb, short_name[:24], (5, 14), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (255, 255, 255), 1)
-                grid[r * thumb_size:(r + 1) * thumb_size, c * thumb_size:(c + 1) * thumb_size] = thumb
-
-        sheet_path = out_p / f"contact_sheet_{s_idx + 1}.jpg"
-        cv2.imwrite(str(sheet_path), grid)
-        print(f"  Saved contact sheet: {sheet_path}")
-
-
 def main():
-    ap = argparse.ArgumentParser(description="Generate SAM ground-truth masks using point prompts")
+    ap = argparse.ArgumentParser(description="Generate SAM ground-truth masks using point and box prompts")
     ap.add_argument("--images", default="data", help="root folder of dataset")
     ap.add_argument("--checkpoint", default="weights/sam_vit_b_01ec64.pth", help="SAM checkpoint path")
     ap.add_argument("--points", default="points.json", help="path to point prompts JSON")
     ap.add_argument("--model-type", default="vit_b")
     ap.add_argument("--out", default="out/sam")
+    ap.add_argument("--image", help="process only a single image matching this name/stem")
     ap.add_argument("--contact-sheet", action="store_true", help="build contact sheet of all overlays")
     args = ap.parse_args()
 
@@ -140,7 +118,16 @@ def main():
     (out / "masks").mkdir(parents=True, exist_ok=True)
     (out / "overlays").mkdir(parents=True, exist_ok=True)
 
-    paths = sorted(p for p in Path(args.images).rglob("*") if p.suffix.lower() in EXTS)
+    all_paths = sorted(p for p in Path(args.images).rglob("*") if p.suffix.lower() in EXTS)
+    if args.image:
+        paths = [p for p in all_paths if args.image.lower() in p.name.lower()]
+        if not paths:
+            print(f"No image matching '{args.image}' found.")
+            return
+        print(f"Processing single image: {paths[0].name}")
+    else:
+        paths = all_paths
+
     fallback_images = []
 
     for idx, p in enumerate(paths):
@@ -152,7 +139,7 @@ def main():
         if p.name in points_data and points_data[p.name]:
             predictor.set_image(rgb)
             masks = masks_from_points(predictor, points_data[p.name])
-            mode = "point-prompt"
+            mode = "point/box-prompt"
         else:
             fallback_images.append(p.name)
             if auto_generator is None:
@@ -173,10 +160,14 @@ def main():
         for fn in fallback_images:
             print(f"  {fn}")
     else:
-        print(f"\nAll {len(paths)} images used point prompts.")
+        print(f"\nAll {len(paths)} processed images used point/box prompts.")
 
-    # Always generate or update contact sheet
-    build_contact_sheets(out / "overlays", out)
+    # Contact sheet and suspicious audit
+    try:
+        from contact_sheet import build_contact_sheets_and_audit
+    except ImportError:
+        from src.contact_sheet import build_contact_sheets_and_audit
+    build_contact_sheets_and_audit(out / "overlays", out / "masks", out)
 
 
 if __name__ == "__main__":
