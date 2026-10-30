@@ -2,48 +2,49 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Egg Segmentation and Tracking Report</title>
+<title>Egg Segmentation and Multi-Object Tracking Take-Home Report</title>
 <style>
   @page {
     size: A4 portrait;
-    margin: 16mm 14mm 16mm 14mm;
+    margin: 14mm 12mm 14mm 12mm;
   }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.45;
+    line-height: 1.4;
     color: #2c3e50;
     margin: 0;
     padding: 0;
-    font-size: 12px;
+    font-size: 11px;
   }
-  h1 { font-size: 20px; color: #1a252f; border-bottom: 2px solid #34495e; padding-bottom: 4px; margin-top: 0; }
-  h2 { font-size: 15px; color: #2c3e50; border-bottom: 1px solid #bdc3c7; padding-bottom: 3px; margin-top: 18px; page-break-after: avoid; }
-  h3 { font-size: 13px; color: #34495e; margin-top: 12px; page-break-after: avoid; }
-  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10.5px; }
-  th, td { border: 1px solid #d2d7d9; padding: 4px 6px; text-align: left; }
+  h1 { font-size: 18px; color: #1a252f; border-bottom: 2px solid #34495e; padding-bottom: 3px; margin-top: 0; }
+  h2 { font-size: 14px; color: #2c3e50; border-bottom: 1px solid #bdc3c7; padding-bottom: 2px; margin-top: 14px; page-break-after: avoid; }
+  h3 { font-size: 12px; color: #34495e; margin-top: 10px; page-break-after: avoid; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 9.5px; page-break-inside: auto; }
+  tr { page-break-inside: avoid; page-break-after: auto; }
+  th, td { border: 1px solid #d2d7d9; padding: 3px 5px; text-align: left; }
   th { background-color: #f4f6f7; font-weight: 600; color: #34495e; }
   tr:nth-child(even) { background-color: #fafbfc; }
-  .badge { display: inline-block; padding: 2px 4px; border-radius: 3px; font-weight: bold; font-size: 8.5px; text-align: center; }
+  .badge { display: inline-block; padding: 1px 3px; border-radius: 2px; font-weight: bold; font-size: 8px; text-align: center; }
   .badge.keep { background-color: #27ae60; color: white; }
   .badge.base { background-color: #2980b9; color: white; }
   .badge.discard { background-color: #e74c3c; color: white; }
-  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 10px; background: #eef2f5; padding: 1px 3px; border-radius: 3px; }
-  .metrics-box { display: flex; justify-content: space-between; margin: 10px 0; }
-  .metric-card { flex: 1; background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 4px; padding: 8px; margin: 0 3px; text-align: center; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 9px; background: #eef2f5; padding: 1px 2px; border-radius: 2px; }
+  .metrics-box { display: flex; justify-content: space-between; margin: 8px 0; }
+  .metric-card { flex: 1; background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 4px; padding: 6px; margin: 0 2px; text-align: center; }
   .metric-card:first-child { margin-left: 0; }
   .metric-card:last-child { margin-right: 0; }
-  .metric-card .num { font-size: 16px; font-weight: bold; color: #2b5c8f; }
-  .metric-card .lbl { font-size: 9.5px; color: #7f8c8d; text-transform: uppercase; margin-top: 2px; }
-  .fig-center { text-align: center; margin: 12px 0; page-break-inside: avoid; }
-  .fig-center img { max-width: 100%; height: auto; border: 1px solid #e1e8ed; border-radius: 4px; }
-  .fig-caption { font-size: 10px; color: #555; margin-top: 3px; font-style: italic; }
+  .metric-card .num { font-size: 15px; font-weight: bold; color: #2b5c8f; }
+  .metric-card .lbl { font-size: 8.5px; color: #7f8c8d; text-transform: uppercase; margin-top: 1px; }
+  .fig-center { text-align: center; margin: 8px 0; page-break-inside: avoid; }
+  .fig-center img { max-width: 100%; height: auto; border: 1px solid #e1e8ed; border-radius: 3px; }
+  .fig-caption { font-size: 9.5px; color: #444; margin-top: 2px; font-style: italic; }
   .page-break { page-break-before: always; }
 </style>
 </head>
 <body>
 
-<h1>Egg Segmentation and Multi-Object Tracking Report</h1>
-<p style="color:#7f8c8d; font-size:11px; margin-top:-4px;">
+<h1>Egg Segmentation and Multi-Object Tracking Take-Home Report</h1>
+<p style="color:#7f8c8d; font-size:10px; margin-top:-3px;">
   <strong>Candidate:</strong> Sree Varun Aahil | <strong>Date:</strong> October 30, 2026 | <strong>Machine:</strong> Windows 11 (CUDA Enabled)
 </p>
 
@@ -72,21 +73,36 @@
 
 <h2>1. Executive Summary</h2>
 <p>
-  This report details an end-to-end computer vision solution for egg segmentation and multi-object tracking.
-  Ground truth masks were established via SAM (<code>vit_b</code> on CUDA) with human point/box prompts and automated area/border auditing. A classical segmentation pipeline was built via controlled single-parameter hypotheses evaluated solely on the dev split. The frozen final configuration was tested once on the eval split. Finally, a robust multi-object tracker was deployed on a 1440-frame video test sequence, resolving challenging hand occlusions and tracking persistent instances.
+  This report presents an end-to-end computer vision solution for egg segmentation and multi-object tracking under challenging conditions, including touching instances, boiling water, high-contrast table textures, and hand occlusions. Ground truth masks were established via SAM (<code>vit_b</code> on CUDA) with human point/box prompts and an automated area and border contact audit. A classical image-processing pipeline was tuned strictly on the dev split across 18 controlled trials and evaluated once on the unseen eval split. A multi-object tracker was deployed on the 1440-frame table experiment video, incorporating YCrCb skin gating to eliminate hand occlusion leakage. All metrics, counts, and tables presented below are derived directly from runs of this repository.
 </p>
+<ul>
+  <li><strong>Ground Truth Integrity:</strong> 110 clean SAM masks generated via <code>SamPredictor</code> (<code>vit_b</code> on CUDA) using human point prompts and tight bounding boxes for boiling water edge cases. 0 flagged suspicious masks remaining.</li>
+  <li><strong>Classical Pipeline (Dev Split, n=88):</strong> Pixel Mean IoU = <strong>0.4018</strong> (95% CI: [0.3435, 0.4603], Median = 0.3147), Dice = <strong>0.5200</strong>, Detection F1 = <strong>0.4087</strong>, Mean Count Error = <strong>2.20</strong>.</li>
+  <li><strong>Classical Pipeline (Eval Split, n=22):</strong> Pixel Mean IoU = <strong>0.3196</strong> (95% CI: [0.1978, 0.4268], Median = 0.2502), Dice = <strong>0.4239</strong>, Detection F1 = <strong>0.3206</strong>, Mean Count Error = <strong>1.68</strong>.</li>
+  <li><strong>Video Tracking (1440 frames):</strong> 1440 frames processed at 24.0 FPS. <strong>6 unique tracks</strong> created across the video, with <strong>18 loss events</strong> and <strong>12 recoveries</strong>. Hand occlusion and fingertip leakage at frame 600 resolved using YCrCb skin gating and morphological opening (gating reduced the total foreground mask by 2296 px over the whole frame; the fingertip bulge is visible in Figure 6, and restricted to the crop x in [200, 460], y in [300, 430], the mask was reduced by 1304 px).</li>
+</ul>
 
 <h2>2. Task 1: Ground Truth Mask Generation (SAM)</h2>
 <p>
-  SAM (<code>vit_b</code>) was executed on CUDA using saved point prompts from <code>points.json</code>. An automated audit in <code>src/contact_sheet.py</code> flagged masks with area &gt; 40% or edge contact &gt; 50%. Three boiling-pot images with flooded masks (<code>not_damaged_124</code>, <code>135</code>, <code>145</code>) were corrected with tight bounding boxes, reducing mask areas from ~62-82% down to ~13-14% (0 flagged masks remaining).
+  SAM (<code>vit_b</code>, 375 MB checkpoint) was executed on CUDA using saved point prompts from <code>points.json</code> with multi-mask score selection (<code>multimask_output=True</code>). Hand-tuned shape and color filters were strictly excluded from the ground-truth path to prevent artificial bias toward the classical segmentation pipeline.
 </p>
 <p>
   <strong>Ground Truth Egg Distribution across 110 images:</strong> 93 images (84.5%) with 1 egg; 6 images (5.5%) with 2 eggs; 11 images (10.0%) with 3 eggs.
 </p>
+<h3>Ground Truth Quality Audit & Fixes (<code>out/sam/gt_fix_audit.json</code>)</h3>
+<p>
+  Initial automated SAM passes on boiling water images flooded the pot interior. An automated border and area audit in <code>src/contact_sheet.py</code> flagged masks with area &gt; 40% or edge contact &gt; 50%. Bounding box prompts were added around egg boundaries for boiling pot scenes (verified in <code>out/sam/gt_fix_audit.json</code>):
+</p>
+<ul>
+  <li><code>not_damaged_124</code>: BBox <code>[280, 150, 520, 400]</code> reduced area fraction from 81.9% (335354 px, 978 border contacts) to <strong>13.4%</strong> (54995 px, 0 border contacts).</li>
+  <li><code>not_damaged_135</code>: BBox <code>[270, 170, 520, 420]</code> reduced area fraction from 79.5% (325584 px, 994 border contacts) to <strong>14.2%</strong> (58113 px, 0 border contacts).</li>
+  <li><code>not_damaged_145</code>: BBox <code>[250, 200, 480, 450]</code> reduced area fraction from 62.5% (256010 px, 665 border contacts) to <strong>13.2%</strong> (54032 px, 0 border contacts).</li>
+</ul>
+<p>All 110 ground truth masks now pass the automated audit (0 flagged in <code>out/sam/suspicious.txt</code>).</p>
 
 <h2>3. Task 2: Parameterized Classical Segmentation & Experiment Log</h2>
 <p>
-  A unified parameterized pipeline was tuned on the 88 dev images across 18 controlled trials. Every trial varied exactly one parameter relative to its named parent (with <code>watershed_conditional</code> testing conditional mode and <code>min_dist=50</code>). Keep/discard decisions were determined dynamically by comparing dev IoU against parent dev IoU (with Detection F1 serving as an explicit tiebreaker for watershed).
+  A unified parameterized pipeline was tuned on the 88 dev images across 18 controlled trials. Every trial varied exactly one parameter relative to its named parent. Keep/discard decisions compare strictly against the parent's dev IoU. Note: Trial <code>watershed_conditional</code> modified two parameters relative to its parent (<code>area_filter_2500</code>): it enabled conditional watershed and set the peak distance threshold to <code>min_dist=50</code>. Under this trial, Detection F1 rose from 0.3084 to 0.4087, mean signed count error rose from +0.45 to +2.20 (over-splitting), pixel IoU unchanged. Because Detection F1 improved substantially for instance segmentation, it was kept for the final configuration.
 </p>
 <p><strong>Kept Pipeline Chain:</strong> <code>baseline -> morph_small -> morph_medium -> morph_large -> area_filter_2500 -> watershed_conditional -> final (eval)</code></p>
 
@@ -155,6 +171,37 @@
   </tbody>
 </table>
 
+<h3>Bootstrap 95% Confidence Intervals & Dev vs Eval Analysis</h3>
+<p>
+  Inspection of per-category results reveals the concrete factors driving the gap between dev (0.4018) and eval (0.3196):
+</p>
+<ol>
+  <li><strong>Severe Hand Image Degradation:</strong> Hand-held egg images average IoU 0.6120 in dev (11 images) but collapse to <strong>0.1502</strong> in eval (5 images). Hand shots represent 22.7% of the eval split vs 12.5% of dev.</li>
+  <li><strong>Tabletop Contrast Differences:</strong> Tabletop scenes average IoU 0.3659 in dev (32 images) vs 0.2424 in eval (8 images).</li>
+  <li><strong>Absence of White-Tray Camouflage in Eval:</strong> All 13 white-tray images (IoU 0.1274) were grouped into dev, while eval contains 0.</li>
+  <li><strong>Small-Sample Variance:</strong> Because eval has only 22 images, its bootstrap 95% confidence interval spans widely ([0.1978, 0.4268]) and encompasses the dev mean. Thus, while hand-holding failures and tabletop lighting differences clearly drive the performance drop in the observed data, small sample variance also plays a substantial role.</li>
+</ol>
+
+<h3>Detailed Breakdown of the 5 Eval Hand Images</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Image Stem</th>
+      <th style="text-align:center;">IoU</th>
+      <th style="text-align:center;">GT Eggs</th>
+      <th style="text-align:center;">Pred Blobs</th>
+      <th>Failure Root Cause in Eval Overlay</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><code>not_damaged_108</code></td><td style='text-align:center;'>0.0459</td><td style='text-align:center;'>1</td><td style='text-align:center;'>3</td><td>Pale hand skin and bright overhead lighting cause Otsu to merge palm, wrist, and forearm into foreground.</td></tr>
+<tr><td><code>not_damaged_127</code></td><td style='text-align:center;'>0.0601</td><td style='text-align:center;'>1</td><td style='text-align:center;'>3</td><td>Egg held against washed-out backdrop; fingers and background illumination bridge into a massive false blob.</td></tr>
+<tr><td><code>not_damaged_152</code></td><td style='text-align:center;'>0.0745</td><td style='text-align:center;'>1</td><td style='text-align:center;'>3</td><td>Direct sunlight on hand creates low chromatic contrast, causing Otsu to segment almost the entire lower frame.</td></tr>
+<tr><td><code>not_damaged_151</code></td><td style='text-align:center;'>0.1451</td><td style='text-align:center;'>1</td><td style='text-align:center;'>6</td><td>Fingers curling around eggshell are segmented along with forearm; distance watershed over-splits into 6 fragments.</td></tr>
+<tr><td><code>not_damaged_130</code></td><td style='text-align:center;'>0.4256</td><td style='text-align:center;'>1</td><td style='text-align:center;'>2</td><td>Egg cupped in palm; palm skin connects continuously to egg perimeter (92% of false positive pixels are skin).</td></tr>
+  </tbody>
+</table>
+
 <h3>Per-Category Dev vs Eval Split Breakdown</h3>
 <table>
   <thead>
@@ -176,11 +223,8 @@
 <tr><td>Foliage / herbs in background (specular highlights)</td><td style='text-align:center;'>7</td><td style='text-align:center;'>0.6906</td><td style='text-align:center;'>1</td><td style='text-align:center;'>0.9068</td></tr>
   </tbody>
 </table>
-<p style="font-size:11px; color:#555;">
-  <em>Note on Dev vs Eval Gap:</em> Eval split contains 22 images, with 0 white-tray images (all 13 are in dev) and 3 backlit images (13.6% of eval) against 6 in dev (6.8%). Because eval has only 22 images, its bootstrap 95% confidence interval ([0.1978, 0.4268]) spans widely and completely encompasses the dev mean (0.4018). Thus, the numerical difference cannot be attributed to a single cause or distribution shift.
-</p>
 
-<h3>Visual Failure Categorization (failure_tags.csv)</h3>
+<h3>Visual Failure Categorization (<code>failure_tags.csv</code>)</h3>
 <table>
   <thead>
     <tr>
@@ -205,32 +249,58 @@
 </table>
 
 <div class="fig-center">
-  <img src="figures/failure_gallery_dev.png" style="max-height: 420px;">
+  <img src="figures/iou_dist_dev.png" style="max-height: 220px;">
+  <div class="fig-caption">Figure 1a: Pixel IoU distribution on Dev split (n=88).</div>
+</div>
+
+<div class="fig-center">
+  <img src="figures/iou_dist_eval.png" style="max-height: 220px;">
+  <div class="fig-caption">Figure 1b: Pixel IoU distribution on Eval split (n=22).</div>
+</div>
+
+<div class="page-break"></div>
+
+<div class="fig-center">
+  <img src="figures/count_scatter_dev.png" style="max-height: 230px;">
+  <div class="fig-caption">Figure 2a: Predicted vs True egg counts on Dev split. Points lie mostly above y = x, illustrating that the classical algorithm systematically over-counts (mean count error +2.20) due to background clutter and specular highlights passing morphological filters.</div>
+</div>
+
+<div class="fig-center">
+  <img src="figures/count_scatter_eval.png" style="max-height: 230px;">
+  <div class="fig-caption">Figure 2b: Predicted vs True egg counts on Eval split. Points similarly lie above y = x (mean count error +1.68).</div>
+</div>
+
+<div class="fig-center">
+  <img src="figures/failure_gallery_dev.png" style="max-height: 380px;">
   <div class="fig-caption">Figure 3a: Worst 8 failures on Dev split (Green=TP, Red=FP, Blue=FN). White trays and boiling liquid dominate error cases.</div>
 </div>
 
 <div class="page-break"></div>
 
 <div class="fig-center">
-  <img src="figures/failure_gallery_eval.png" style="max-height: 420px;">
+  <img src="figures/failure_gallery_eval.png" style="max-height: 380px;">
   <div class="fig-caption">Figure 3b: Worst 8 failures on Eval split (Green=TP, Red=FP, Blue=FN).</div>
 </div>
 
 <div class="fig-center">
-  <img src="figures/success_gallery_dev.png" style="max-height: 420px;">
-  <div class="fig-caption">Figure 4: Best 8 successes on Dev split showing accurate elliptical contours and high overlap.</div>
+  <img src="figures/success_gallery_dev.png" style="max-height: 380px;">
+  <div class="fig-caption">Figure 4: Best 8 successes on Dev split showing clean elliptical masks matching ground truth.</div>
+</div>
+
+<div class="page-break"></div>
+
+<div class="fig-center">
+  <img src="figures/random_gallery_dev.png" style="max-height: 380px;">
+  <div class="fig-caption">Figure 5: Random 8 representative cases illustrating typical operational performance across mixed illumination.</div>
 </div>
 
 <h2>5. Task 4: Multi-Object Video Tracking</h2>
 <p>
-  Tracking was evaluated on the 1440-frame table sequence (1280x720 @ 24.0 fps). Eggs are placed on the table at frame 222 and spun. The tracker maintains persistent IDs using Hungarian matching on IoU + distance with constant-velocity prediction.
+  Tracking was evaluated on the 1440-frame table sequence (1280x720 @ 24.0 fps). Eggs are placed on the table at frame 222, spun, occluded by hand, and removed before frame 1005. The tracker maintains persistent IDs using Hungarian matching on IoU + distance with constant-velocity prediction.
 </p>
 <ul>
-  <li><strong>Fingertip Leakage Resolution:</strong> At frame 600, demonstrator hand contact caused baseline thresholding to leak into fingers. Incorporating YCrCb skin-color gating (Cr &isin; [135, 175], Cb &isin; [80, 125]) and larger opening eliminated 2296 px of false skin contour.</li>
+  <li><strong>Fingertip Leakage Resolution:</strong> At frame 600, demonstrator hand contact caused baseline thresholding to leak into fingers. Incorporating YCrCb skin-color gating (Cr &isin; [135, 175], Cb &isin; [80, 125]) and larger opening eliminated false skin contour (gating reduced the total foreground mask by 2296 px over the whole frame; the fingertip bulge is visible in Figure 6, and restricted to the crop x in [200, 460], y in [300, 430], the mask was reduced by 1304 px).</li>
   <li><strong>Track Lifetimes & Event Statistics:</strong> 6 unique tracks were created, with 18 loss events and 12 recoveries. Lifetimes: Egg 1 (529 frames), Egg 2 (282 frames), Egg 3 (101 frames), Egg 4 (269 frames), Egg 5 (3 frames), Egg 6 (190 frames).</li>
-  <li><strong>Track 5 Analysis:</strong> Egg 5 lived for exactly 3 frames (F#800&ndash;802) with areas 3043&ndash;3715 px; frame inspection confirms it is a transient motion-blur fragment of the rapidly spinning raw egg before Track 6 took over at F#810.</li>
-  <li><strong>Known Tracking Failures:</strong> At frame 480, 0 eggs were detected due to demonstrator fingers reducing egg contour solidity to 0.7673 (below 0.78 threshold). A full-video audit revealed that frame 480 is the only missed detection frame between frames 222 and 1004 (782 frames with active detection).</li>
-  <li><strong>Breakdown of 658 Zero-Detection Frames:</strong> 205 intro title card frames (F#0&ndash;204), 17 empty table frames (F#205&ndash;221), 1 missed detection at F#480, 10 empty table post-experiment frames (F#1005&ndash;1014), and 425 outro credits frames (F#1015&ndash;1439).</li>
 </ul>
 
 <h3>Track Timeline</h3>
@@ -239,30 +309,49 @@
     <tr>
       <th style="text-align:center;">Track ID</th>
       <th style="text-align:center;">Birth Frame</th>
-      <th style="text-align:center;">Last Frame</th>
-      <th style="text-align:center;">Lifetime</th>
+      <th style="text-align:center;">Last Matched Frame</th>
+      <th style="text-align:center;">Matched Frames Count</th>
       <th>Physical Egg Description</th>
       <th style="text-align:center;">Visual Verification</th>
     </tr>
   </thead>
   <tbody>
-    <tr><td style='text-align:center;'><strong>Track 1</strong></td><td style='text-align:center;'>222</td><td style='text-align:center;'>751</td><td style='text-align:center;'>529</td><td>Right egg (boiled), initial placement and spin sequence</td><td style='text-align:center;'><em>Verified</em></td></tr>
-<tr><td style='text-align:center;'><strong>Track 2</strong></td><td style='text-align:center;'>222</td><td style='text-align:center;'>504</td><td style='text-align:center;'>282</td><td>Left egg (raw), initial placement and spin sequence</td><td style='text-align:center;'><em>Verified</em></td></tr>
-<tr><td style='text-align:center;'><strong>Track 3</strong></td><td style='text-align:center;'>546</td><td style='text-align:center;'>647</td><td style='text-align:center;'>101</td><td>Demonstrator repositioned left egg to right table position</td><td style='text-align:center;'><em>Verified</em></td></tr>
-<tr><td style='text-align:center;'><strong>Track 4</strong></td><td style='text-align:center;'>689</td><td style='text-align:center;'>1004</td><td style='text-align:center;'>269</td><td>Boiled egg returned to left side until table clearance</td><td style='text-align:center;'><em>Verified</em></td></tr>
-<tr><td style='text-align:center;'><strong>Track 5</strong></td><td style='text-align:center;'>800</td><td style='text-align:center;'>802</td><td style='text-align:center;'>3</td><td>Transient motion-blur artifact (area ~3043-3715 px) during rapid raw egg spin</td><td style='text-align:center;'><em>Confirmed spurious artifact (unverified physical egg)</em></td></tr>
-<tr><td style='text-align:center;'><strong>Track 6</strong></td><td style='text-align:center;'>810</td><td style='text-align:center;'>1000</td><td style='text-align:center;'>190</td><td>Raw egg tracked through final spin sequence until removal</td><td style='text-align:center;'><em>Verified</em></td></tr>
+    <tr><td style='text-align:center;'><strong>Track 1</strong></td><td style='text-align:center;'>222</td><td style='text-align:center;'>751</td><td style='text-align:center;'>529</td><td>Initial placement of middle-right egg on table; remains stationary through spin tests until lifted by hand at frame 751.</td><td style='text-align:center;'><em>Verified</em><br><small>frame_0222.png, frame_0507.png, frame_0546.png, frame_0656.png, frame_0689.png, frame_0751.png</small></td></tr>
+<tr><td style='text-align:center;'><strong>Track 2</strong></td><td style='text-align:center;'>222</td><td style='text-align:center;'>507</td><td style='text-align:center;'>282</td><td>Initial placement of left egg on table; tracked through initial spin until lifted by demonstrator at frame 507.</td><td style='text-align:center;'><em>Verified</em><br><small>frame_0222.png, frame_0507.png</small></td></tr>
+<tr><td style='text-align:center;'><strong>Track 3</strong></td><td style='text-align:center;'>546</td><td style='text-align:center;'>656</td><td style='text-align:center;'>101</td><td>Egg placed on far-right table (x ~ 791-880) for spin test; tracked through spinning until picked up by hand at frame 656.</td><td style='text-align:center;'><em>Verified</em><br><small>frame_0546.png, frame_0656.png</small></td></tr>
+<tr><td style='text-align:center;'><strong>Track 4</strong></td><td style='text-align:center;'>689</td><td style='text-align:center;'>1004</td><td style='text-align:center;'>269</td><td>Egg re-placed on left table (x ~ 100-200); coexists with Track 1 (middle-right) over frames 689-751 and persists until final table clearance at frame 1004.</td><td style='text-align:center;'><em>Verified</em><br><small>frame_0689.png, frame_0751.png, frame_0798.png, frame_0800.png, frame_0802.png, frame_0806.png, frame_0810.png, frame_0814.png, frame_0999.png, frame_1004.png</small></td></tr>
+<tr><td style='text-align:center;'><strong>Track 5</strong></td><td style='text-align:center;'>800</td><td style='text-align:center;'>810</td><td style='text-align:center;'>3</td><td>Transient motion-blur fragment (area ~3043-3782 px at x ~ 721, y ~ 531) generated during high-speed raw egg spin. Matched at frames 800, 801, and 810 (where it briefly coexists with Track 6).</td><td style='text-align:center;'><em>Verified</em><br><small>frame_0800.png, frame_0810.png</small></td></tr>
+<tr><td style='text-align:center;'><strong>Track 6</strong></td><td style='text-align:center;'>810</td><td style='text-align:center;'>999</td><td style='text-align:center;'>190</td><td>Raw egg spinning on right table (x ~ 786-856) from frame 810 until lifted by hand at frame 999. Coexists with Track 5 at frame 810 before becoming the sole right-side track.</td><td style='text-align:center;'><em>Verified</em><br><small>frame_0810.png, frame_0814.png, frame_0999.png</small></td></tr>
   </tbody>
 </table>
 
+<h3>Analysis of Track 5 from Event Stills</h3>
+<p>
+  Track 5 was created at frame 800 and was matched at frames 800, 801, and 810 (3 matched frames total, area ~3,043 to 3,782 px around centroid x=721, y=531).
+  Inspection of the saved stills (frames 798, 800, 802, 806, 810, 814) reveals its exact origin:
+</p>
+<ol>
+  <li><strong>Motion-Blur Fragmentation:</strong> When the raw egg is spun at high angular velocity, severe rotational motion blur and specular reflection split the egg segmentation into two distinct fragments.</li>
+  <li><strong>Coexistence with Track 6 at Frame 810:</strong> At frame 810, the left fragment was associated with Track 5 (which was within the 150 px re-ID radius), while the newly appearing right fragment at x=786 spawned Track 6.</li>
+  <li><strong>Consolidation:</strong> By frame 814, the spinning egg consolidated into a single contour at x=777 (area 21,297 px), which was tracked continuously by Track 6 until table clearance (frame 999). Track 5 received no further detections and was purged.</li>
+  <li><strong>Production Recommendation:</strong> Spurious transient tracks with lifetimes under 5 frames should be filtered as false positives.</li>
+</ol>
+
+<h3>Known Tracking Failures & Zero-Detection Audit</h3>
+<ul>
+  <li><strong>Frame 480 Missed Detection:</strong> At frame 480, two eggs are physically present on the table, but the tracker outputs 0 detections. Demonstrator hand contact caused contour solidity to drop to 0.7673, falling below the strict convexity threshold (solidity &ge; 0.78).</li>
+  <li><strong>Audit of Frames 222 to 1004:</strong> Across the entire active demonstration interval (783 frames), exactly 1 frame (Frame 480) had zero detections. All other 782 frames had active detections.</li>
+  <li><strong>Breakdown of 658 Zero-Detection Frames:</strong> 205 intro title frames (F#0&ndash;204), 17 empty table frames (F#205&ndash;221), 1 missed detection at F#480, 10 empty table post-experiment frames (F#1005&ndash;1014), and 425 outro credits frames (F#1015&ndash;1439). Total: 205 + 17 + 1 + 10 + 425 = 658 frames.</li>
+</ul>
+
 <div class="fig-center">
-  <img src="figures/frame_600_comparison.png" style="max-height: 220px;">
-  <div class="fig-caption">Figure 6: Frame 600 before/after comparison (crop: x &isin; [200, 460], y &isin; [300, 430]). Left: Raw frame. Middle: Baseline fingertip leakage. Right: YCrCb skin exclusion cleans egg boundary, eliminating 2296 px of skin noise.</div>
+  <img src="figures/frame_600_comparison.png" style="max-height: 200px;">
+  <div class="fig-caption">Figure 6: Frame 600 before/after comparison (crop: x in [200, 460], y in [300, 430]). Left: Raw frame. Middle: Baseline leakage into fingertips (red). Right: YCrCb skin gating cleans egg boundary (green), reducing the mask by 1304 px within this crop (and 2296 px over the full frame); a small leftover ring remains on the fingernail.</div>
 </div>
 
 <div class="fig-center">
-  <img src="figures/tracking_contact_sheet.jpg" style="max-height: 360px;">
-  <div class="fig-caption">Figure 7: 16-frame Video Tracking Contact Sheet tracking persistent identities through rotations and recoveries.</div>
+  <img src="figures/tracking_events_sheet.jpg" style="max-height: 380px;">
+  <div class="fig-caption">Figure 7: Video Tracking Events Sheet across 14 key video frames documenting track births, deaths, hand interactions, and the Track 5/6 transition.</div>
 </div>
 
 <div class="page-break"></div>
@@ -271,8 +360,8 @@
 <ol>
   <li><strong>Ground Truth Masks:</strong> Ground truth masks were generated using SAM (<code>vit_b</code>) with human point/box prompts rather than dense manual polygon tracings.</li>
   <li><strong>Dataset Size:</strong> With 88 dev and 22 eval images, sample sizes are limited, leading to wide bootstrap confidence intervals on eval.</li>
-  <li><strong>Watershed Characteristics:</strong> Distance transform watershed improved detection F1 on dev by separating touching eggs, but did not increase pixel IoU (it partitions instances without changing overall outer silhouette).</li>
-  <li><strong>Hand-Tuned Video Bounds:</strong> Video tracking parameters (table ROI y &ge; 270, watermark bounds, skin thresholds) were calibrated for this specific video scene.</li>
+  <li><strong>Watershed Behavior:</strong> Under trial <code>watershed_conditional</code>, Detection F1 rose from 0.3084 to 0.4087, mean signed count error rose from +0.45 to +2.20 (over-splitting), pixel IoU unchanged. Distance transform watershed partitions instances without changing overall outer foreground boundaries.</li>
+  <li><strong>Domain-Specific Tuning:</strong> Video tracking parameters (table ROI y &ge; 270, watermark bounds, YCrCb skin thresholds) were calibrated for this specific camera viewpoint and table illumination. Generalizing to varied environments would require automated surface or person detection.</li>
   <li><strong>Re-Identification Across Removals:</strong> Because white eggs lack distinctive surface texture, tracking identities across complete table removals and replacements is physically ambiguous under classical tracking.</li>
   <li><strong>Future Extensions:</strong> Fine-tuning a deep semantic segmentation model (e.g. YOLOv8-seg or Mask2Former) on the dev set using SAM pseudo-masks could learn contextual semantic priors (such as distinguishing eggs from white trays). Combining this with dense optical flow could bridge severe hand occlusions during spinning.</li>
 </ol>
