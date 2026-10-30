@@ -111,56 +111,58 @@ Trials were tracked in `experiments.csv`. Keep/discard decisions compare strictl
 - **Eval Split Mean IoU:** 0.3196 (Bootstrap 95% CI: [0.1978, 0.4268])
 
 Inspection of per-category results reveals the concrete factors driving the gap between dev (0.4018) and eval (0.3196):
-1. **Severe Hand Image Degradation:** Hand-held egg images average IoU 0.6120 in dev (11 images) but collapse to **0.1502** in eval (5 images). Hand shots represent 22.7% of the eval split vs 12.5% of dev.
-2. **Tabletop Contrast Differences:** Tabletop scenes average IoU 0.3659 in dev (32 images) vs 0.2424 in eval (8 images).
-3. **Absence of White-Tray Camouflage in Eval:** All 13 white-tray images (IoU 0.1274) were grouped into dev, while eval contains 0.
-4. **Small-Sample Variance:** Because eval has only 22 images, its bootstrap 95% confidence interval spans widely ([0.1978, 0.4268]) and encompasses the dev mean. Thus, while hand-holding failures and tabletop lighting differences clearly drive the performance drop in the observed data, small sample variance also plays a substantial role.
+1. **Disproportionate Concentration of Container and Packaging Scenes:** Eval contains 10 "Egg on container / lid / plain surface" images (45.5% of eval) with a low mean IoU of **0.2190**. In these scenes, plastic food-container lids, bowls, metal pans, and packaging rims reflect light and distend Otsu threshold boundaries into wide false-positive blobs.
+2. **Camouflage and Hand Occlusions:** Eval includes 2 white plastic egg tray images (`not_damaged_116` and `117`) with near-zero contrast, averaging **0.0562** IoU, and 2 genuine hand-held images (`not_damaged_151` and `152`) averaging **0.1098** IoU. In addition, 3 boiling pot images (`not_damaged_114`, `128`, `147`) average **0.3072** IoU. Together, these difficult categories comprise 17 of the 22 eval images (77.3% of eval).
+3. **Higher Ratio of Clean Tabletop and Multi-Egg Scenes in Dev:** In contrast, the dev split benefits from 27 tabletop scenes with higher contrast (mean IoU **0.5353**), 11 multi-egg scenes (mean IoU **0.6148**), and 5 foliage scenes (mean IoU **0.6805**)—together comprising 43 of 88 dev images (48.9% of dev).
+4. **Small-Sample Variance:** Because eval has only 22 images, its bootstrap 95% confidence interval spans widely ([0.1978, 0.4268]) and encompasses the dev mean. While domain composition (especially the 45.5% container/lid prevalence) explains the lower point estimate, the wide confidence interval confirms substantial small-sample variance.
 
-### Detailed Breakdown of the 5 Eval Hand Images
-In the failure analysis, the "Hand holding egg" category on eval (5 images: `not_damaged_108`, `127`, `130`, `151`, `152`) exhibits severe performance degradation with mean IoU of **0.1502**. Visual inspection and color analysis reveal specific physical root causes:
-- `not_damaged_108` (IoU: 0.0459): Pale skin tone and bright overhead lighting cause Otsu to merge palm, wrist, and forearm into the egg contour (285,716 false positive pixels, of which 37.8% are skin).
-- `not_damaged_127` (IoU: 0.0601): Darker brown egg held against a washed-out background; Otsu thresholding places the darker egg boundary near background luminance while the lighter hand, fingers, and background reflection merge into a 283,983 px foreground blob.
-- `not_damaged_130` (IoU: 0.4256): Egg cupped in palm; palm skin connects continuously to the egg perimeter, producing 62,367 false positive pixels—of which exactly **92.02%** (57392 pixels) fall directly into the standard YCrCb skin-color cluster ($Cr \in [135, 175], Cb \in [80, 125]$).
-- `not_damaged_151` (IoU: 0.1451): Backlit hand holding an egg against a desk light; the fingers and hand cast strong shadows, while the light background and illuminated skin bleed together into the foreground threshold, over-segmenting the hand (223,414 false positive pixels).
-- `not_damaged_152` (IoU: 0.0745): Dark brown egg held in a hand over a light kitchen worktop; the brown egg has lower luminance than the bright hand and table; Otsu sets the threshold separating dark objects from light, causing the hand and tabletop to be segmented as foreground (295,610 px) while the egg itself is at the boundary.
+### Detailed Breakdown of 5 Challenging Eval Failure Cases
+As shown in Figure 6, category contact sheets, and the measured pixel properties, five challenging eval failure cases (`not_damaged_108`, `127`, `130`, `151`, `152`) illustrate distinct failure mechanisms across container packaging and hand occlusions:
+- `not_damaged_108` (IoU: 0.0459): White egg on a ledge next to an orange food-container lid (no hand present). Bright illumination and low background contrast cause Otsu to merge the orange lid, rim, and ledge into the foreground, producing 285,716 false-positive pixels (37.8% falls in the YCrCb skin range due to orange plastic chrominance).
+- `not_damaged_127` (IoU: 0.0601): White egg on a ledge beside an orange container lid (no hand present). Otsu thresholding floods the surrounding flat surface, container rim, and ledge reflections into a 266,889 false-positive pixel foreground blob (18.6% in skin range).
+- `not_damaged_130` (IoU: 0.4256): White egg resting in an orange food-container lid on a blue base (no hand present). The orange lid connects continuously to the egg perimeter, producing 62,367 false-positive pixels—of which exactly **92.02%** (57392 pixels) fall directly into the standard YCrCb skin-color cluster ($Cr \in [135, 175], Cb \in [80, 125]$). Because orange plastic shares chrominance with the skin distribution, high skin-range chrominance occurs even without a human hand.
+- `not_damaged_151` (IoU: 0.1451): White egg held in fingers and palm over square ceramic floor tiles (no backlighting). Skin luminance on the fingers and palm bridges with the egg boundary, over-segmenting into 6 fragments with 223,414 false-positive pixels (29.3% in skin range).
+- `not_damaged_152` (IoU: 0.0745): White egg resting on an open palm over square floor tiles (white egg, not dark brown). Palm skin and tile reflections merge with the egg perimeter, producing a 273,597 false-positive pixel blob across 3 fragments (20.7% in skin range).
 
 | Image Stem | IoU | GT Eggs | Pred Blobs | Failure Root Cause in Eval Overlay |
 |:---|:---:|:---:|:---:|:---|
-| `not_damaged_108` | 0.0459 | 1 | 3 | Pale hand skin and bright overhead lighting cause Otsu thresholding to merge the palm, wrist, and forearm into the egg contour (285,716 FP pixels, 37.8% skin). |
-| `not_damaged_127` | 0.0601 | 1 | 3 | Darker brown egg held against washed-out backdrop; Otsu places egg boundary near background luminance while fingers and light table merge into a 283,983 px blob. |
-| `not_damaged_130` | 0.4256 | 1 | 2 | Egg cupped in open palm; palm skin connects continuously to egg perimeter, generating 62,367 FP pixels of which exactly 92.02% (57,392 px) are skin in YCrCb. |
-| `not_damaged_151` | 0.1451 | 1 | 6 | Backlit hand holding egg against desk light; fingers and hand cast strong shadows, while background and illuminated skin bleed together, over-segmenting into 6 fragments. |
-| `not_damaged_152` | 0.0745 | 1 | 3 | Dark brown egg on bright kitchen worktop; brown egg has lower luminance than bright hand and table; Otsu segments hand and table as foreground (295,610 px). |
+| `not_damaged_108` | 0.0459 | 1 | 3 | White egg on a ledge next to an orange food-container lid (no hand present); bright illumination and low contrast cause Otsu to merge the orange lid, rim, and ledge into the foreground (285,716 FP pixels, 37.8% in skin chrominance range due to orange plastic). |
+| `not_damaged_127` | 0.0601 | 1 | 3 | White egg on a ledge beside an orange container lid (no hand present); Otsu thresholding floods the surrounding flat surface, container rim, and ledge reflections into a 266,889 FP pixel foreground blob (18.6% in skin range). |
+| `not_damaged_130` | 0.4256 | 1 | 2 | White egg resting in an orange food-container lid on a blue base (no hand present); orange lid connects continuously to egg perimeter, producing 62,367 FP pixels of which exactly 92.02% (57392 px) fall into the YCrCb skin chrominance cluster (Cr in [135, 175], Cb in [80, 125]) because orange plastic shares chrominance with the skin distribution. |
+| `not_damaged_151` | 0.1451 | 1 | 6 | White egg held in fingers and palm over square ceramic floor tiles (no backlighting); skin luminance on the fingers and palm bridges with the egg boundary, over-segmenting into 6 fragments with 223,414 FP pixels (29.3% in skin range). |
+| `not_damaged_152` | 0.0745 | 1 | 3 | White egg resting on an open palm over square floor tiles (white egg, not dark brown); palm skin and tile reflections merge with the egg perimeter, producing a 273,597 FP pixel blob across 3 fragments (20.7% in skin range). |
 
 ![Eval Hand Overlays](figures/eval_hand_overlays.png)  
-*Figure 6: Eval split hand-held egg failure overlays (n=5). Left: Original image. Middle: SAM ground truth (green). Right: Classical prediction (red/amber). Skin-tone luminance and lighting contrast cause massive false-positive leakage into fingers, palms, and arms.*
+*Figure 6: Five challenging eval failure overlays (not_damaged_108, 127, 130 on/beside container lids; 151, 152 held in hand over tiles). Left: Original image. Middle: SAM ground truth (green). Right: Classical prediction (red/amber). Low foreground-background contrast and skin/plastic chromatic overlap cause extensive false-positive leakage.*
 
 ### Per-Category Dev vs Eval Split Breakdown
 
 | Category | Dev Count | Dev IoU | Eval Count | Eval IoU |
 |:---|:---:|:---:|:---:|:---:|
-| White egg on white tray / fridge interior | 13 | 0.1274 | 0 | 0.0000 |
-| Egg in boiling water / submerged | 6 | 0.1723 | 2 | 0.1756 |
-| Backlit / extreme shadows | 6 | 0.3354 | 3 | 0.5392 |
-| Tabletop / high-contrast background | 32 | 0.3659 | 8 | 0.2424 |
-| Multiple touching eggs | 13 | 0.5674 | 3 | 0.4886 |
-| Hand holding egg / fingers occluding | 11 | 0.6120 | 5 | 0.1502 |
-| Foliage / herbs in background (specular highlights) | 7 | 0.6906 | 1 | 0.9068 |
+| Backlit / extreme shadows | 3 | 0.0071 | 0 | 0.0000 |
+| White egg on white tray / fridge interior | 8 | 0.1003 | 2 | 0.0562 |
+| Egg in boiling water / submerged | 5 | 0.2099 | 3 | 0.3072 |
+| Hand holding egg / fingers occluding | 9 | 0.2822 | 2 | 0.1098 |
+| Egg on container / lid / plain surface | 20 | 0.3161 | 10 | 0.2190 |
+| Tabletop / high-contrast background | 27 | 0.5353 | 4 | 0.6997 |
+| Multiple touching eggs | 11 | 0.6148 | 1 | 0.7893 |
+| Foliage / herbs in background (specular highlights) | 5 | 0.6805 | 0 | 0.0000 |
 
 ### Visual Failure Categorization (`failure_tags.csv`)
-All 110 dataset images were inspected and tagged by physical scene type. Images `not_damaged_123`, `125`, and `42` were tagged as *White egg on white tray / fridge interior*. Backlit hand shots `not_damaged_20`, `24`, and `44` were categorized under a unified rule: *Whenever intense directional backlighting or silhouette illumination is present behind the egg (even if supported by fingers), it is categorized under Backlit / extreme shadows because extreme illumination dynamic range is the primary driver of Otsu thresholding failure.*
+All 110 dataset images were categorized by physical scene type and audited via category contact sheets (`report/figures/category_sheets/`). Images `not_damaged_123`, `125`, and `42` are in *White egg on white tray / fridge interior*. Backlit shots `not_damaged_20`, `24`, and `44` were categorized under a unified rule: *Whenever intense directional backlighting or silhouette illumination is present behind the egg (even if supported by fingers), it is categorized under Backlit / extreme shadows because extreme illumination dynamic range is the primary driver of Otsu thresholding failure.*
 
 | Scene Category | Image Count | Pct of Dataset | Mean IoU | Mean Dice | Mean Det F1 | Primary Failure Mechanism |
 |:---|:---:|:---:|:---:|:---:|:---:|:---|
-| White egg on white tray / fridge interior | 13 | 11.8% | 0.1274 | 0.2198 | 0.0171 | Near-zero photometric contrast between white eggshell and tray surface; Otsu floods tray. |
-| Egg in boiling water / submerged | 8 | 7.3% | 0.1731 | 0.2901 | 0.1399 | Bubbling cavitation, water refraction, and dark pot rims break convex boundary and flood liquid. |
-| Tabletop / high-contrast background | 40 | 36.4% | 0.3412 | 0.4744 | 0.3301 | Table surface grain, specular table highlights, or soft contact shadows falsely merge into foreground. |
-| Backlit / extreme shadows | 9 | 8.2% | 0.4033 | 0.4539 | 0.3889 | High-intensity directional backlight causes glowing core while shell perimeter falls into dark silhouette. |
-| Hand holding egg / fingers occluding | 16 | 14.5% | 0.4677 | 0.5821 | 0.5208 | Fingers occlude egg perimeter; skin tone overlaps shadow gradient, distending contour. |
-| Multiple touching eggs | 16 | 14.5% | 0.5526 | 0.6844 | 0.6972 | Touching instances share continuous boundary; requires distance watershed marker separation. |
-| Foliage / herbs in background (specular highlights) | 8 | 7.3% | 0.7177 | 0.8222 | 0.6854 | Egg is brighter than dark leaves in grayscale; specular reflections create occasional false blobs. |
+| Backlit / extreme shadows | 3 | 2.7% | 0.0071 | 0.0141 | 0.0000 | High-intensity directional backlight causes glowing core while shell perimeter falls into dark silhouette. |
+| White egg on white tray / fridge interior | 10 | 9.1% | 0.0915 | 0.1646 | 0.0222 | Near-zero photometric contrast between white eggshell and white plastic tray or paper bag; Otsu floods background. |
+| Egg in boiling water / submerged | 8 | 7.3% | 0.2464 | 0.3839 | 0.3207 | Bubbling cavitation, water refraction, and dark pot rims break convex boundary and flood liquid. |
+| Hand holding egg / fingers occluding | 11 | 10.0% | 0.2509 | 0.3767 | 0.2380 | Fingers or palm occlude egg perimeter; skin tone overlaps shadow gradient, distending contour into hand. |
+| Egg on container / lid / plain surface | 30 | 27.3% | 0.2838 | 0.4058 | 0.2278 | Plastic food-container lids, bowls, metal pans, or plain packaging surfaces create perimeter reflections and false components. |
+| Tabletop / high-contrast background | 31 | 28.2% | 0.5565 | 0.6771 | 0.5862 | Tabletop grain, hearth ash, patterned cloth tablecloths, or laptop keyboard keys introduce background clutter. |
+| Multiple touching eggs | 12 | 10.9% | 0.6294 | 0.7513 | 0.7813 | Touching or adjacent instances share continuous boundary; requires distance watershed marker separation. |
+| Foliage / herbs in background (specular highlights) | 5 | 4.5% | 0.6805 | 0.8005 | 0.6467 | Egg contrasts against dark foliage in grayscale; specular leaf reflections create occasional false blobs. |
 
-**Key Qualitative Takeaway:** Classical thresholding struggles most on *White egg on white tray / fridge interior* (Mean IoU = 0.1274) and *Boiling water* (Mean IoU = 0.1731) because global luminance is nearly identical between foreground and background. On *Foliage / herbs in background* (Mean IoU = 0.7177), the egg contrasts well because the egg shell is substantially brighter than dark leaves in grayscale; specular leaf highlights create occasional false blobs.
+**Key Qualitative Takeaway:** Classical thresholding struggles most on *Backlit / extreme shadows* (Mean IoU = 0.0071) and *White egg on white tray / fridge interior* (Mean IoU = 0.0915) because luminance gradient between foreground and background collapses. On *Foliage / herbs in background* (Mean IoU = 0.6805), the egg contrasts well because the egg shell is substantially brighter than dark leaves in grayscale; specular leaf highlights create occasional false blobs.
 
 ### Metric Distributions
 
@@ -204,6 +206,7 @@ All 110 dataset images were inspected and tagged by physical scene type. Images 
    - At frame ~600, demonstrator fingers brush against the egg. Baseline thresholding caused segmentation to leak into pale fingertips.
    - Fixed by incorporating **YCrCb skin-color gating** (`Cr in [135, 175] & Cb in [80, 125]`) combined with an elliptical morphological opening kernel (11x11).
    - Gating reduced the total foreground mask by 2296 px over the whole frame; restricted to crop x in [200, 460], y in [300, 430], the mask was reduced by 1304 px.
+   - *Chrominance Model Consideration:* As demonstrated in static failure case `not_damaged_130`, non-skin objects sharing warm orange/red chrominance ($Cr \in [135, 175], Cb \in [80, 125]$) could inadvertently be suppressed by skin gating. In this video sequence, however, the brown wooden tabletop and white eggshell fall outside this chrominance window, leaving the egg body mask completely intact (retaining 35,942 px).
 3. **Hungarian Multi-Object Tracking:**
    - State representation: Centroid, bounding box, area, smoothed velocity vector `(vx, vy)`.
    - Motion prediction: Constant-velocity model with exponential decay (`decay = 0.90^lost`).
@@ -246,12 +249,12 @@ All 110 dataset images were inspected and tagged by physical scene type. Images 
 
 | Track ID | Birth Frame | Last Matched Frame | Matched Frames Count | Physical Egg Description | Visual Verification |
 |:---|:---:|:---:|:---:|:---|:---:|
-| Track 1 | 222 | 751 | 529 | Initial placement of middle-right egg on table; remains stationary through spin tests until lifted by hand at frame 751. | Verified (frame_0222.png, frame_0507.png, frame_0546.png, frame_0656.png, frame_0689.png, frame_0751.png) |
-| Track 2 | 222 | 507 | 282 | Initial placement of left egg on table; tracked through initial spin until lifted by demonstrator at frame 507. | Verified (frame_0222.png, frame_0507.png) |
-| Track 3 | 546 | 656 | 101 | Egg placed on far-right table (x ~ 791-880) for spin test; tracked through spinning until picked up by hand at frame 656. | Verified (frame_0546.png, frame_0656.png) |
-| Track 4 | 689 | 1004 | 269 | Egg re-placed on left table (x ~ 100-200); coexists with Track 1 (middle-right) over frames 689-751 and persists until final table clearance at frame 1004. | Verified (frame_0689.png, frame_0751.png, frame_0798.png, frame_0800.png, frame_0802.png, frame_0806.png, frame_0810.png, frame_0814.png, frame_0999.png, frame_1004.png) |
-| Track 5 | 800 | 810 | 3 | Transient motion-blur fragment (area ~3043-3782 px at x ~ 721, y ~ 531) generated during high-speed raw egg spin. Matched at frames 800, 801, and 810 (where it briefly coexists with Track 6). | Verified (frame_0800.png, frame_0810.png) |
-| Track 6 | 810 | 999 | 190 | Raw egg spinning on right table (x ~ 786-856) from frame 810 until lifted by hand at frame 999. Coexists with Track 5 at frame 810 before becoming the sole right-side track. | Verified (frame_0810.png, frame_0814.png, frame_0999.png) |
+| Track 1 | 222 | 751 | 529 | Initial placement of middle-right egg on table; remains stationary through spin tests until lifted by demonstrator hand at frame 751. | Verified (frame_0222.png, frame_0507.png, frame_0546.png, frame_0656.png, frame_0689.png, frame_0751.png) |
+| Track 2 | 222 | 507 | 282 | Initial placement of left egg on table; tracked through initial spin test until lifted by demonstrator hand at frame 507. | Verified (frame_0222.png, frame_0507.png) |
+| Track 3 | 546 | 656 | 101 | Egg placed on right side of table for spin test (frame 546); tracked through spinning until picked up by demonstrator hand at frame 656. | Verified (frame_0546.png, frame_0656.png) |
+| Track 4 | 689 | 1004 | 269 | Egg first detected in demonstrator hand entering left frame at frame 689, placed onto table at frame 720; tracked continuously on left table until circular black wipe transition at frame 1004. | Verified (frame_0689.png, frame_0751.png, frame_0798.png, frame_0800.png, frame_0802.png, frame_0806.png, frame_0810.png, frame_0814.png, frame_0999.png, frame_1004.png) |
+| Track 5 | 800 | 810 | 3 | Transient motion-blur fragment (area ~3,043-3,782 px at x ~ 721, y ~ 531) from high-speed spinning raw egg. Matched at frames 800, 801, and 810 (brief duplicate ID with Track 6). | Verified (frame_0800.png, frame_0810.png) |
+| Track 6 | 810 | 999 | 190 | Raw egg spinning on right table from frame 810 until circular black wipe transition at frame 999. Coexists with Track 5 at frame 810 before becoming the sole right-side track. | Verified (frame_0810.png, frame_0814.png, frame_0999.png) |
 
 ### Known Tracking Failures & Zero-Detection Audit
 - **Frame 480 Missed Detection:** At frame 480, two eggs are physically present on the table, but the tracker outputs 0 detections. Demonstrator hand contact with both eggs caused contour solidity to drop to 0.7673, falling below the strict convexity threshold (`solidity >= 0.78`).

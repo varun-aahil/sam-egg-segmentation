@@ -157,29 +157,31 @@ Saved 110 records to failure_tags.csv
 
 Visual Failure Categories Breakdown (Full Dataset):
 --------------------------------------------------------------------------------------------------------------
-Category                                       Count     Pct   Mean IoU   Mean Dice   Mean F1
+Category                                              Count     Pct   Mean IoU   Mean Dice   Mean F1
 --------------------------------------------------------------------------------------------------------------
-White egg on white tray / fridge interior         13   11.8%     0.1274      0.2198    0.0171
-Egg in boiling water / submerged                   8    7.3%     0.1731      0.2901    0.1399
-Tabletop / high-contrast background               40   36.4%     0.3412      0.4744    0.3301
-Backlit / extreme shadows                          9    8.2%     0.4033      0.4539    0.3889
-Hand holding egg / fingers occluding              16   14.5%     0.4677      0.5821    0.5208
-Multiple touching eggs                            16   14.5%     0.5526      0.6844    0.6972
-Foliage / herbs in background (specular highlights)      8    7.3%     0.7177      0.8222    0.6854
+Backlit / extreme shadows                                 3    2.7%     0.0071      0.0141    0.0000
+White egg on white tray / fridge interior                10    9.1%     0.0915      0.1646    0.0222
+Egg in boiling water / submerged                          8    7.3%     0.2464      0.3839    0.3207
+Hand holding egg / fingers occluding                     11   10.0%     0.2509      0.3767    0.2380
+Egg on container / lid / plain surface                   30   27.3%     0.2838      0.4058    0.2278
+Tabletop / high-contrast background                      31   28.2%     0.5565      0.6771    0.5862
+Multiple touching eggs                                   12   10.9%     0.6294      0.7513    0.7813
+Foliage / herbs in background (specular highlights)       5    4.5%     0.6805      0.8005    0.6467
 --------------------------------------------------------------------------------------------------------------
 
 Per-Category Dev vs Eval Split Breakdown:
--------------------------------------------------------------------------------------
-Category                                       Dev N   Dev IoU  Eval N   Eval IoU
--------------------------------------------------------------------------------------
-White egg on white tray / fridge interior         13    0.1274       0     0.0000
-Egg in boiling water / submerged                   6    0.1723       2     0.1756
-Tabletop / high-contrast background               32    0.3659       8     0.2424
-Backlit / extreme shadows                          6    0.3354       3     0.5392
-Hand holding egg / fingers occluding              11    0.6120       5     0.1502
-Multiple touching eggs                            13    0.5674       3     0.4886
-Foliage / herbs in background (specular highlights)      7    0.6906       1     0.9068
--------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------
+Category                                              Dev N   Dev IoU  Eval N   Eval IoU
+--------------------------------------------------------------------------------------------
+Backlit / extreme shadows                                 3    0.0071       0     0.0000
+White egg on white tray / fridge interior                 8    0.1003       2     0.0562
+Egg in boiling water / submerged                          5    0.2099       3     0.3072
+Hand holding egg / fingers occluding                      9    0.2822       2     0.1098
+Egg on container / lid / plain surface                   20    0.3161      10     0.2190
+Tabletop / high-contrast background                      27    0.5353       4     0.6997
+Multiple touching eggs                                   11    0.6148       1     0.7893
+Foliage / herbs in background (specular highlights)       5    0.6805       0     0.0000
+--------------------------------------------------------------------------------------------
 ```
 *(Full log in `logs/06_categorize.txt`)*
 
@@ -252,7 +254,7 @@ python src/generate_report.py | Tee-Object -FilePath logs/08_report.txt
 ```text
 Generated Markdown report: report\report.md
 Generated HTML report: report\report.html
-Successfully compiled PDF report to C:\Users\Varun\OneDrive\Desktop\sam-egg-segmentation\report\report.pdf (8574.7 KB)
+Successfully compiled PDF report to C:\Users\Varun\OneDrive\Desktop\sam-egg-segmentation\report\report.pdf (8592.8 KB)
 
 --- Programmatic Verification of Figure Captions in PDF ---
   [FOUND] Figure 1a: Pixel IoU distribution on Dev split (n=88)....
@@ -263,13 +265,14 @@ Successfully compiled PDF report to C:\Users\Varun\OneDrive\Desktop\sam-egg-segm
   [FOUND] Figure 3b: Worst 8 failures on Eval split (Green=TP, Red=FP, Blue=FN)....
   [FOUND] Figure 4: Best 8 successes on Dev split showing clean elliptical masks matc...
   [FOUND] Figure 5: Random 8 representative cases illustrating typical operational pe...
-  [FOUND] Figure 6: Eval split hand-held egg failure overlays (n=5). Left: Original i...
+  [FOUND] Figure 6: Five challenging eval failure overlays (not_damaged_108, 127, 130...
   [FOUND] Figure 7: Frame 600 before/after comparison (crop: x in [200, 460], y in [3...
   [FOUND] Figure 8: Video Tracking Events Sheet across 14 key video frames documentin...
 -----------------------------------------------------------
 
 Verification SUCCESS: All 11 figure captions appear in the compiled PDF text!
 ```
+*(Full log in `logs/08_report.txt`)*
 *(Full log in `logs/08_report.txt`)*
 
 ### Stage 9: Split Integrity & Leakage Audit
@@ -316,15 +319,17 @@ Conclusion: ZERO split leakage detected. Eval metrics are completely uncompromis
 
 | Deliverable | File Path | Description |
 |:---|:---|:---|
-| **Report PDF** | `report/report.pdf` | Formatted multi-page PDF report with embedded figures and tables (8.37 MB). |
+| **Report PDF** | `report/report.pdf` | Formatted multi-page PDF report with embedded figures and tables (8.39 MB). |
 | **Report HTML** | `report/report.html` | Standalone HTML report viewable in any browser. |
 | **Report Markdown** | `report/report.md` | Standard GitHub Flavored Markdown report. |
+| **Tag Changes Audit** | `tag_changes.md` | Complete visual audit log documenting all 62 categorization updates and reasons. |
+| **Category Sheets** | `report/figures/category_sheets/*.jpg` | 8 contact sheets (one per scene category) displaying all 110 dataset images. |
 | **Captured Logs** | `logs/*.txt` | All 10 real captured execution logs (01 through 09). |
 | **Split Leakage Audit**| `out/eval/split_leakage_audit.txt` | Complete audit report verifying 0 straddling groups and identical leak-free metrics. |
-| **Eval Hand Skin Audit**| `out/eval/hand_130_skin_fraction.json` | Quantitative false-positive skin fractions across all 5 eval hand images (92.02% for image 130). |
-| **Figures** | `report/figures/` | All plots, failure/success galleries, frame 600 comparison, eval hand overlays, and contact sheets. |
+| **Eval Failure Audit** | `out/eval/hand_130_skin_fraction.json` | Quantitative false-positive skin fractions across all 5 difficult eval failure cases (92.02% for image 130). |
+| **Figures** | `report/figures/` | All plots, failure/success galleries, frame 600 comparison, eval failure overlays, and contact sheets. |
 | **Experiment Log** | `experiments.csv` | Full table of 18 dev trials + 1 eval row with parent relationships, IoU, Dice, F1, CntErr, decision, reason. |
-| **Failure Categories** | `failure_tags.csv` | Image-by-image physical failure classification (white trays, boiling pots, hands, etc.). |
+| **Failure Categories** | `failure_tags.csv` | Image-by-image physical failure classification across 8 verified scene categories. |
 | **Evaluation Summaries** | `out/eval/dev/summary.json`, `out/eval/eval/summary.json` | Complete machine-readable metrics for both splits. |
 | **Per-Image Metrics** | `out/eval/dev/per_image.csv`, `out/eval/eval/per_image.csv` | Image-level pixel IoU, Dice, Precision, Recall, matched eggs, detection F1. |
 | **Per-Category Dev/Eval** | `out/eval/per_category_dev_eval.json` | Per-category count and IoU breakdown across dev and eval splits. |
@@ -349,11 +354,15 @@ Conclusion: ZERO split leakage detected. Eval metrics are completely uncompromis
 ### Q1: Why did classical segmentation struggle so severely on boiling pots and white trays?
 **Physical Mechanism:**  
 Classical algorithms (Otsu, adaptive Gaussian, CLAHE) rely on sharp photometric discontinuities (intensity or chromatic gradients) at object boundaries.
-1. **White egg on white tray / fridge (Mean IoU = 0.1274, lowest of all):**  
+1. **White egg on white tray / fridge (Mean IoU = 0.0915):**  
    The chromatic and luminance contrast between an unblemished white eggshell and a white polystyrene tray or white refrigerator interior is essentially zero ($\Delta L^* \approx 0\text{--}5$). Because Otsu selects a global threshold based on the dominant bimodal valley of the entire frame, the entire white tray surface is lumped into the foreground with the egg.
-2. **Egg submerged in boiling water (Mean IoU = 0.1731):**  
+2. **Backlit / extreme shadows (Mean IoU = 0.0071):**  
+   Intense directional backlighting creates a bright glowing core while the egg perimeter falls into near-black silhouette, inverting or destroying the convex gradient.
+3. **Egg submerged in boiling water (Mean IoU = 0.2464):**  
    Liquid refraction, violent bubble cavitation, and dark metallic pot rims create chaotic specular highlights. The threshold leaks across the water surface, segmenting the liquid boundary rather than the submerged shell.
-3. **Contrast with Herbs / Foliage (Mean IoU = 0.7177):**  
+4. **Egg on container / lid / plain surface (Mean IoU = 0.2838):**  
+   Plastic food-container lids, bowls, metal pans, or plain packaging rims introduce specular highlights and rim gradients that merge into the egg silhouette.
+5. **Contrast with Herbs / Foliage (Mean IoU = 0.6805):**  
    Conversely, when eggs sit among green leaves, the egg shell has substantially higher grayscale luminance than the dark foliage background, allowing straightforward threshold separation (specular leaf highlights create occasional false blobs).
 
 ### Q2: Why Hungarian matching over DeepSORT or ByteTrack for video tracking?
@@ -375,6 +384,7 @@ At frame ~600, the demonstrator's fingers contact the spinning egg. Because fing
 1. **YCrCb Skin Gating:** Human skin occupies a tight cluster in chrominance space (Cr in [135, 175], Cb in [80, 125]). By filtering out pixels falling into this cluster before morphology, skin pixels are rejected regardless of intensity.
 2. **Morphological Opening:** Increasing the elliptical opening kernel from (5x5) to (11x11) severed the narrow bridge between the fingernail contact point and the egg silhouette.
 3. **Verification:** Gating reduced the total foreground mask by 2,296 px over the whole frame; restricted to the crop x in [200, 460], y in [300, 430], the mask was reduced by 1,304 px, as documented in `out/video/frame_600_skin_diff.json` and `report/figures/frame_600_comparison.png`.
+4. **Skin Chrominance & Orange Plastic Overlap:** As established in failure analysis for image `not_damaged_130`, non-skin surfaces with warm orange/red chrominance fall into the same YCrCb skin region ($Cr \in [135, 175], Cb \in [80, 125]$) and could be suppressed if present. In this video, the brown wooden tabletop and white eggshell lie outside this window, so skin gating safely removes the fingertip bridge while preserving 100% of the egg body mask (retaining 35,942 px).
 
 ---
 

@@ -1,38 +1,19 @@
 Generated Markdown report: report\report.md
-
 Generated HTML report: report\report.html
-
-Successfully compiled PDF report to C:\Users\Varun\OneDrive\Desktop\sam-egg-segmentation\report\report.pdf (8574.7 KB)
-
-
+Successfully compiled PDF report to C:\Users\Varun\OneDrive\Desktop\sam-egg-segmentation\report\report.pdf (8592.8 KB)
 
 --- Programmatic Verification of Figure Captions in PDF ---
-
   [FOUND] Figure 1a: Pixel IoU distribution on Dev split (n=88)....
-
   [FOUND] Figure 1b: Pixel IoU distribution on Eval split (n=22)....
-
   [FOUND] Figure 2a: Predicted vs True egg counts on Dev split. Points lie mostly abo...
-
   [FOUND] Figure 2b: Predicted vs True egg counts on Eval split. Points similarly lie...
-
   [FOUND] Figure 3a: Worst 8 failures on Dev split (Green=TP, Red=FP, Blue=FN). White...
-
   [FOUND] Figure 3b: Worst 8 failures on Eval split (Green=TP, Red=FP, Blue=FN)....
-
   [FOUND] Figure 4: Best 8 successes on Dev split showing clean elliptical masks matc...
-
   [FOUND] Figure 5: Random 8 representative cases illustrating typical operational pe...
-
-  [FOUND] Figure 6: Eval split hand-held egg failure overlays (n=5). Left: Original i...
-
+  [FOUND] Figure 6: Five challenging eval failure overlays (not_damaged_108, 127, 130...
   [FOUND] Figure 7: Frame 600 before/after comparison (crop: x in [200, 460], y in [3...
-
   [FOUND] Figure 8: Video Tracking Events Sheet across 14 key video frames documentin...
-
 -----------------------------------------------------------
 
-
-
 Verification SUCCESS: All 11 figure captions appear in the compiled PDF text!
-

@@ -173,7 +173,7 @@ def main():
     full_skin_reduced = skin_diff["full_frame"]["pixels_reduced"]
     crop_skin_reduced = skin_diff["crop_x200_460_y300_430"]["pixels_reduced"]
 
-    # 5 Eval Hand Images data
+    # 5 Eval Failure Cases data (shown in Figure 6)
     eval_hand_details = [
         {
             "stem": "not_damaged_108",
@@ -182,7 +182,7 @@ def main():
             "n_pred": 3,
             "fp_px": hand_skin_audit["all_eval_hand_stats"]["108"]["fp_count"],
             "skin_pct": f"{hand_skin_audit['all_eval_hand_stats']['108']['skin_fraction']*100:.1f}%",
-            "cause": "Pale hand skin and bright overhead lighting cause Otsu thresholding to merge the palm, wrist, and forearm into the egg contour (285,716 FP pixels, 37.8% skin)."
+            "cause": "White egg on a ledge next to an orange food-container lid (no hand present); bright illumination and low contrast cause Otsu to merge the orange lid, rim, and ledge into the foreground (285,716 FP pixels, 37.8% in skin chrominance range due to orange plastic)."
         },
         {
             "stem": "not_damaged_127",
@@ -191,7 +191,7 @@ def main():
             "n_pred": 3,
             "fp_px": hand_skin_audit["all_eval_hand_stats"]["127"]["fp_count"],
             "skin_pct": f"{hand_skin_audit['all_eval_hand_stats']['127']['skin_fraction']*100:.1f}%",
-            "cause": "Darker brown egg held against washed-out backdrop; Otsu places egg boundary near background luminance while fingers and light table merge into a 283,983 px blob."
+            "cause": "White egg on a ledge beside an orange container lid (no hand present); Otsu thresholding floods the surrounding flat surface, container rim, and ledge reflections into a 266,889 FP pixel foreground blob (18.6% in skin range)."
         },
         {
             "stem": "not_damaged_130",
@@ -200,7 +200,7 @@ def main():
             "n_pred": 2,
             "fp_px": hand_skin_audit["all_eval_hand_stats"]["130"]["fp_count"],
             "skin_pct": hand_skin_audit["skin_fraction_pct"],
-            "cause": f"Egg cupped in open palm; palm skin connects continuously to egg perimeter, generating 62,367 FP pixels of which exactly {hand_skin_audit['skin_fraction_pct']} (57,392 px) are skin in YCrCb."
+            "cause": f"White egg resting in an orange food-container lid on a blue base (no hand present); orange lid connects continuously to egg perimeter, producing 62,367 FP pixels of which exactly {hand_skin_audit['skin_fraction_pct']} ({hand_skin_audit['skin_fp_px']} px) fall into the YCrCb skin chrominance cluster (Cr in [135, 175], Cb in [80, 125]) because orange plastic shares chrominance with the skin distribution."
         },
         {
             "stem": "not_damaged_151",
@@ -209,7 +209,7 @@ def main():
             "n_pred": 6,
             "fp_px": hand_skin_audit["all_eval_hand_stats"]["151"]["fp_count"],
             "skin_pct": f"{hand_skin_audit['all_eval_hand_stats']['151']['skin_fraction']*100:.1f}%",
-            "cause": "Backlit hand holding egg against desk light; fingers and hand cast strong shadows, while background and illuminated skin bleed together, over-segmenting into 6 fragments."
+            "cause": "White egg held in fingers and palm over square ceramic floor tiles (no backlighting); skin luminance on the fingers and palm bridges with the egg boundary, over-segmenting into 6 fragments with 223,414 FP pixels (29.3% in skin range)."
         },
         {
             "stem": "not_damaged_152",
@@ -218,7 +218,7 @@ def main():
             "n_pred": 3,
             "fp_px": hand_skin_audit["all_eval_hand_stats"]["152"]["fp_count"],
             "skin_pct": f"{hand_skin_audit['all_eval_hand_stats']['152']['skin_fraction']*100:.1f}%",
-            "cause": "Dark brown egg on bright kitchen worktop; brown egg has lower luminance than bright hand and table; Otsu segments hand and table as foreground (295,610 px)."
+            "cause": "White egg resting on an open palm over square floor tiles (white egg, not dark brown); palm skin and tile reflections merge with the egg perimeter, producing a 273,597 FP pixel blob across 3 fragments (20.7% in skin range)."
         }
     ]
 
@@ -358,7 +358,7 @@ def main():
         "Figure 3b: Worst 8 failures on Eval split (Green=TP, Red=FP, Blue=FN).",
         "Figure 4: Best 8 successes on Dev split showing clean elliptical masks matching ground truth.",
         "Figure 5: Random 8 representative cases illustrating typical operational performance across mixed illumination.",
-        "Figure 6: Eval split hand-held egg failure overlays (n=5). Left: Original image. Middle: SAM ground truth (green). Right: Classical prediction (red/amber). Skin-tone luminance and lighting contrast cause massive false-positive leakage into fingers, palms, and arms.",
+        "Figure 6: Five challenging eval failure overlays (not_damaged_108, 127, 130 on/beside container lids; 151, 152 held in hand over tiles). Left: Original image. Middle: SAM ground truth (green). Right: Classical prediction (red/amber). Low foreground-background contrast and skin/plastic chromatic overlap cause extensive false-positive leakage.",
         f"Figure 7: Frame 600 before/after comparison (crop: x in [200, 460], y in [300, 430]). Left: Raw frame. Middle: Baseline leakage into fingertips (red). Right: YCrCb skin gating cleans egg boundary (green), reducing the mask by {crop_skin_reduced} px within this crop (and {full_skin_reduced} px over the full frame); a small leftover ring remains on the fingernail.",
         "Figure 8: Video Tracking Events Sheet across 14 key video frames documenting track births, deaths, hand interactions, and the Track 5/6 transition."
     ]
@@ -461,18 +461,18 @@ Trials were tracked in `experiments.csv`. Keep/discard decisions compare strictl
 - **Eval Split Mean IoU:** {eval_iou:.4f} (Bootstrap 95% CI: [{eval_ci[0]:.4f}, {eval_ci[1]:.4f}])
 
 Inspection of per-category results reveals the concrete factors driving the gap between dev ({dev_iou:.4f}) and eval ({eval_iou:.4f}):
-1. **Severe Hand Image Degradation:** Hand-held egg images average IoU 0.6120 in dev (11 images) but collapse to **0.1502** in eval (5 images). Hand shots represent 22.7% of the eval split vs 12.5% of dev.
-2. **Tabletop Contrast Differences:** Tabletop scenes average IoU 0.3659 in dev (32 images) vs 0.2424 in eval (8 images).
-3. **Absence of White-Tray Camouflage in Eval:** All 13 white-tray images (IoU 0.1274) were grouped into dev, while eval contains 0.
-4. **Small-Sample Variance:** Because eval has only 22 images, its bootstrap 95% confidence interval spans widely ([{eval_ci[0]:.4f}, {eval_ci[1]:.4f}]) and encompasses the dev mean. Thus, while hand-holding failures and tabletop lighting differences clearly drive the performance drop in the observed data, small sample variance also plays a substantial role.
+1. **Disproportionate Concentration of Container and Packaging Scenes:** Eval contains 10 "Egg on container / lid / plain surface" images (45.5% of eval) with a low mean IoU of **0.2190**. In these scenes, plastic food-container lids, bowls, metal pans, and packaging rims reflect light and distend Otsu threshold boundaries into wide false-positive blobs.
+2. **Camouflage and Hand Occlusions:** Eval includes 2 white plastic egg tray images (`not_damaged_116` and `117`) with near-zero contrast, averaging **0.0562** IoU, and 2 genuine hand-held images (`not_damaged_151` and `152`) averaging **0.1098** IoU. In addition, 3 boiling pot images (`not_damaged_114`, `128`, `147`) average **0.3072** IoU. Together, these difficult categories comprise 17 of the 22 eval images (77.3% of eval).
+3. **Higher Ratio of Clean Tabletop and Multi-Egg Scenes in Dev:** In contrast, the dev split benefits from 27 tabletop scenes with higher contrast (mean IoU **0.5353**), 11 multi-egg scenes (mean IoU **0.6148**), and 5 foliage scenes (mean IoU **0.6805**)—together comprising 43 of 88 dev images (48.9% of dev).
+4. **Small-Sample Variance:** Because eval has only 22 images, its bootstrap 95% confidence interval spans widely ([{eval_ci[0]:.4f}, {eval_ci[1]:.4f}]) and encompasses the dev mean. While domain composition (especially the 45.5% container/lid prevalence) explains the lower point estimate, the wide confidence interval confirms substantial small-sample variance.
 
-### Detailed Breakdown of the 5 Eval Hand Images
-In the failure analysis, the "Hand holding egg" category on eval (5 images: `not_damaged_108`, `127`, `130`, `151`, `152`) exhibits severe performance degradation with mean IoU of **0.1502**. Visual inspection and color analysis reveal specific physical root causes:
-- `not_damaged_108` (IoU: 0.0459): Pale skin tone and bright overhead lighting cause Otsu to merge palm, wrist, and forearm into the egg contour (285,716 false positive pixels, of which 37.8% are skin).
-- `not_damaged_127` (IoU: 0.0601): Darker brown egg held against a washed-out background; Otsu thresholding places the darker egg boundary near background luminance while the lighter hand, fingers, and background reflection merge into a 283,983 px foreground blob.
-- `not_damaged_130` (IoU: 0.4256): Egg cupped in palm; palm skin connects continuously to the egg perimeter, producing 62,367 false positive pixels—of which exactly **{hand_skin_audit['skin_fraction_pct']}** ({hand_skin_audit['skin_fp_px']} pixels) fall directly into the standard YCrCb skin-color cluster ($Cr \in [135, 175], Cb \in [80, 125]$).
-- `not_damaged_151` (IoU: 0.1451): Backlit hand holding an egg against a desk light; the fingers and hand cast strong shadows, while the light background and illuminated skin bleed together into the foreground threshold, over-segmenting the hand (223,414 false positive pixels).
-- `not_damaged_152` (IoU: 0.0745): Dark brown egg held in a hand over a light kitchen worktop; the brown egg has lower luminance than the bright hand and table; Otsu sets the threshold separating dark objects from light, causing the hand and tabletop to be segmented as foreground (295,610 px) while the egg itself is at the boundary.
+### Detailed Breakdown of 5 Challenging Eval Failure Cases
+As shown in Figure 6, category contact sheets, and the measured pixel properties, five challenging eval failure cases (`not_damaged_108`, `127`, `130`, `151`, `152`) illustrate distinct failure mechanisms across container packaging and hand occlusions:
+- `not_damaged_108` (IoU: 0.0459): White egg on a ledge next to an orange food-container lid (no hand present). Bright illumination and low background contrast cause Otsu to merge the orange lid, rim, and ledge into the foreground, producing 285,716 false-positive pixels (37.8% falls in the YCrCb skin range due to orange plastic chrominance).
+- `not_damaged_127` (IoU: 0.0601): White egg on a ledge beside an orange container lid (no hand present). Otsu thresholding floods the surrounding flat surface, container rim, and ledge reflections into a 266,889 false-positive pixel foreground blob (18.6% in skin range).
+- `not_damaged_130` (IoU: 0.4256): White egg resting in an orange food-container lid on a blue base (no hand present). The orange lid connects continuously to the egg perimeter, producing 62,367 false-positive pixels—of which exactly **{hand_skin_audit['skin_fraction_pct']}** ({hand_skin_audit['skin_fp_px']} pixels) fall directly into the standard YCrCb skin-color cluster ($Cr \in [135, 175], Cb \in [80, 125]$). Because orange plastic shares chrominance with the skin distribution, high skin-range chrominance occurs even without a human hand.
+- `not_damaged_151` (IoU: 0.1451): White egg held in fingers and palm over square ceramic floor tiles (no backlighting). Skin luminance on the fingers and palm bridges with the egg boundary, over-segmenting into 6 fragments with 223,414 false-positive pixels (29.3% in skin range).
+- `not_damaged_152` (IoU: 0.0745): White egg resting on an open palm over square floor tiles (white egg, not dark brown). Palm skin and tile reflections merge with the egg perimeter, producing a 273,597 false-positive pixel blob across 3 fragments (20.7% in skin range).
 
 | Image Stem | IoU | GT Eggs | Pred Blobs | Failure Root Cause in Eval Overlay |
 |:---|:---:|:---:|:---:|:---|
@@ -488,13 +488,13 @@ In the failure analysis, the "Hand holding egg" category on eval (5 images: `not
 {cat_split_table_md}
 
 ### Visual Failure Categorization (`failure_tags.csv`)
-All 110 dataset images were inspected and tagged by physical scene type. Images `not_damaged_123`, `125`, and `42` were tagged as *White egg on white tray / fridge interior*. Backlit hand shots `not_damaged_20`, `24`, and `44` were categorized under a unified rule: *Whenever intense directional backlighting or silhouette illumination is present behind the egg (even if supported by fingers), it is categorized under Backlit / extreme shadows because extreme illumination dynamic range is the primary driver of Otsu thresholding failure.*
+All 110 dataset images were categorized by physical scene type and audited via category contact sheets (`report/figures/category_sheets/`). Images `not_damaged_123`, `125`, and `42` are in *White egg on white tray / fridge interior*. Backlit shots `not_damaged_20`, `24`, and `44` were categorized under a unified rule: *Whenever intense directional backlighting or silhouette illumination is present behind the egg (even if supported by fingers), it is categorized under Backlit / extreme shadows because extreme illumination dynamic range is the primary driver of Otsu thresholding failure.*
 
 | Scene Category | Image Count | Pct of Dataset | Mean IoU | Mean Dice | Mean Det F1 | Primary Failure Mechanism |
 |:---|:---:|:---:|:---:|:---:|:---:|:---|
 {cat_table_md}
 
-**Key Qualitative Takeaway:** Classical thresholding struggles most on *White egg on white tray / fridge interior* (Mean IoU = 0.1274) and *Boiling water* (Mean IoU = 0.1731) because global luminance is nearly identical between foreground and background. On *Foliage / herbs in background* (Mean IoU = 0.7177), the egg contrasts well because the egg shell is substantially brighter than dark leaves in grayscale; specular leaf highlights create occasional false blobs.
+**Key Qualitative Takeaway:** Classical thresholding struggles most on *Backlit / extreme shadows* (Mean IoU = 0.0071) and *White egg on white tray / fridge interior* (Mean IoU = 0.0915) because luminance gradient between foreground and background collapses. On *Foliage / herbs in background* (Mean IoU = 0.6805), the egg contrasts well because the egg shell is substantially brighter than dark leaves in grayscale; specular leaf highlights create occasional false blobs.
 
 ### Metric Distributions
 
@@ -538,6 +538,7 @@ All 110 dataset images were inspected and tagged by physical scene type. Images 
    - At frame ~600, demonstrator fingers brush against the egg. Baseline thresholding caused segmentation to leak into pale fingertips.
    - Fixed by incorporating **YCrCb skin-color gating** (`Cr in [135, 175] & Cb in [80, 125]`) combined with an elliptical morphological opening kernel (11x11).
    - Gating reduced the total foreground mask by {full_skin_reduced} px over the whole frame; restricted to crop x in [200, 460], y in [300, 430], the mask was reduced by {crop_skin_reduced} px.
+   - *Chrominance Model Consideration:* As demonstrated in static failure case `not_damaged_130`, non-skin objects sharing warm orange/red chrominance ($Cr \in [135, 175], Cb \in [80, 125]$) could inadvertently be suppressed by skin gating. In this video sequence, however, the brown wooden tabletop and white eggshell fall outside this chrominance window, leaving the egg body mask completely intact (retaining 35,942 px).
 3. **Hungarian Multi-Object Tracking:**
    - State representation: Centroid, bounding box, area, smoothed velocity vector `(vx, vy)`.
    - Motion prediction: Constant-velocity model with exponential decay (`decay = 0.90^lost`).
@@ -773,22 +774,22 @@ All 110 dataset images were inspected and tagged by physical scene type. Images 
   Inspection of per-category results reveals the concrete factors driving the gap between dev ({dev_iou:.4f}) and eval ({eval_iou:.4f}):
 </p>
 <ol>
-  <li><strong>Severe Hand Image Degradation:</strong> Hand-held egg images average IoU 0.6120 in dev (11 images) but collapse to <strong>0.1502</strong> in eval (5 images). Hand shots represent 22.7% of the eval split vs 12.5% of dev.</li>
-  <li><strong>Tabletop Contrast Differences:</strong> Tabletop scenes average IoU 0.3659 in dev (32 images) vs 0.2424 in eval (8 images).</li>
-  <li><strong>Absence of White-Tray Camouflage in Eval:</strong> All 13 white-tray images (IoU 0.1274) were grouped into dev, while eval contains 0.</li>
-  <li><strong>Small-Sample Variance:</strong> Because eval has only 22 images, its bootstrap 95% confidence interval spans widely ([{eval_ci[0]:.4f}, {eval_ci[1]:.4f}]) and encompasses the dev mean. Thus, while hand-holding failures and tabletop lighting differences clearly drive the performance drop in the observed data, small sample variance also plays a substantial role.</li>
+  <li><strong>Disproportionate Concentration of Container and Packaging Scenes:</strong> Eval contains 10 "Egg on container / lid / plain surface" images (45.5% of eval) with a low mean IoU of <strong>0.2190</strong>. In these scenes, plastic food-container lids, bowls, metal pans, and packaging rims reflect light and distend Otsu threshold boundaries into wide false-positive blobs.</li>
+  <li><strong>Camouflage and Hand Occlusions:</strong> Eval includes 2 white plastic egg tray images (<code>not_damaged_116</code> and <code>117</code>) with near-zero contrast, averaging <strong>0.0562</strong> IoU, and 2 genuine hand-held images (<code>not_damaged_151</code> and <code>152</code>) averaging <strong>0.1098</strong> IoU. In addition, 3 boiling pot images (<code>not_damaged_114</code>, <code>128</code>, <code>147</code>) average <strong>0.3072</strong> IoU. Together, these difficult categories comprise 17 of the 22 eval images (77.3% of eval).</li>
+  <li><strong>Higher Ratio of Clean Tabletop and Multi-Egg Scenes in Dev:</strong> In contrast, the dev split benefits from 27 tabletop scenes with higher contrast (mean IoU <strong>0.5353</strong>), 11 multi-egg scenes (mean IoU <strong>0.6148</strong>), and 5 foliage scenes (mean IoU <strong>0.6805</strong>)&mdash;together comprising 43 of 88 dev images (48.9% of dev).</li>
+  <li><strong>Small-Sample Variance:</strong> Because eval has only 22 images, its bootstrap 95% confidence interval spans widely ([{eval_ci[0]:.4f}, {eval_ci[1]:.4f}]) and encompasses the dev mean. While domain composition (especially the 45.5% container/lid prevalence) explains the lower point estimate, the wide confidence interval confirms substantial small-sample variance.</li>
 </ol>
 
-<h3>Detailed Breakdown of the 5 Eval Hand Images</h3>
+<h3>Detailed Breakdown of 5 Challenging Eval Failure Cases</h3>
 <p>
-  In the failure analysis, the "Hand holding egg" category on eval (5 images: <code>not_damaged_108</code>, <code>127</code>, <code>130</code>, <code>151</code>, <code>152</code>) exhibits severe performance degradation with mean IoU of <strong>0.1502</strong>. Visual inspection and color analysis reveal specific physical root causes:
+  As shown in Figure 6, category contact sheets, and the measured pixel properties, five challenging eval failure cases (<code>not_damaged_108</code>, <code>127</code>, <code>130</code>, <code>151</code>, <code>152</code>) illustrate distinct failure mechanisms across container packaging and hand occlusions:
 </p>
 <ul>
-  <li><code>not_damaged_108</code> (IoU: 0.0459): Pale skin tone and bright overhead lighting cause Otsu to merge palm, wrist, and forearm into the egg contour (285,716 false positive pixels, of which 37.8% are skin).</li>
-  <li><code>not_damaged_127</code> (IoU: 0.0601): Darker brown egg held against a washed-out background; Otsu thresholding places the darker egg boundary near background luminance while the lighter hand, fingers, and background reflection merge into a 283,983 px foreground blob.</li>
-  <li><code>not_damaged_130</code> (IoU: 0.4256): Egg cupped in palm; palm skin connects continuously to the egg perimeter, producing 62,367 false positive pixels—of which exactly <strong>{hand_skin_audit['skin_fraction_pct']}</strong> ({hand_skin_audit['skin_fp_px']} pixels) fall directly into the standard YCrCb skin-color cluster (Cr &isin; [135, 175], Cb &isin; [80, 125]).</li>
-  <li><code>not_damaged_151</code> (IoU: 0.1451): Backlit hand holding an egg against a desk light; the fingers and hand cast strong shadows, while the light background and illuminated skin bleed together into the foreground threshold, over-segmenting the hand (223,414 false positive pixels).</li>
-  <li><code>not_damaged_152</code> (IoU: 0.0745): Dark brown egg held in a hand over a light kitchen worktop; the brown egg has lower luminance than the bright hand and table; Otsu sets the threshold separating dark objects from light, causing the hand and tabletop to be segmented as foreground (295,610 px) while the egg itself is at the boundary.</li>
+  <li><code>not_damaged_108</code> (IoU: 0.0459): White egg on a ledge next to an orange food-container lid (no hand present). Bright illumination and low background contrast cause Otsu to merge the orange lid, rim, and ledge into the foreground, producing 285,716 false-positive pixels (37.8% falls in the YCrCb skin range due to orange plastic chrominance).</li>
+  <li><code>not_damaged_127</code> (IoU: 0.0601): White egg on a ledge beside an orange container lid (no hand present). Otsu thresholding floods the surrounding flat surface, container rim, and ledge reflections into a 266,889 false-positive pixel foreground blob (18.6% in skin range).</li>
+  <li><code>not_damaged_130</code> (IoU: 0.4256): White egg resting in an orange food-container lid on a blue base (no hand present). The orange lid connects continuously to the egg perimeter, producing 62,367 false-positive pixels&mdash;of which exactly <strong>{hand_skin_audit['skin_fraction_pct']}</strong> ({hand_skin_audit['skin_fp_px']} pixels) fall directly into the standard YCrCb skin-color cluster (Cr &isin; [135, 175], Cb &isin; [80, 125]). Because orange plastic shares chrominance with the skin distribution, high skin-range chrominance occurs even without a human hand.</li>
+  <li><code>not_damaged_151</code> (IoU: 0.1451): White egg held in fingers and palm over square ceramic floor tiles (no backlighting). Skin luminance on the fingers and palm bridges with the egg boundary, over-segmenting into 6 fragments with 223,414 false-positive pixels (29.3% in skin range).</li>
+  <li><code>not_damaged_152</code> (IoU: 0.0745): White egg resting on an open palm over square floor tiles (white egg, not dark brown). Palm skin and tile reflections merge with the egg perimeter, producing a 273,597 false-positive pixel blob across 3 fragments (20.7% in skin range).</li>
 </ul>
 
 <table>
@@ -847,6 +848,8 @@ All 110 dataset images were inspected and tagged by physical scene type. Images 
   </tbody>
 </table>
 
+<p><strong>Key Qualitative Takeaway:</strong> Classical thresholding struggles most on <em>Backlit / extreme shadows</em> (Mean IoU = 0.0071) and <em>White egg on white tray / fridge interior</em> (Mean IoU = 0.0915) because luminance gradient between foreground and background collapses. On <em>Foliage / herbs in background</em> (Mean IoU = 0.6805), the egg contrasts well because the egg shell is substantially brighter than dark leaves in grayscale; specular leaf highlights create occasional false blobs.</p>
+
 <div class="fig-center">
   <img src="figures/iou_dist_dev.png" style="max-height: 220px;">
   <div class="fig-caption">{all_captions[0]}</div>
@@ -898,7 +901,7 @@ All 110 dataset images were inspected and tagged by physical scene type. Images 
   Tracking was evaluated on the 1440-frame table sequence (1280x720 @ 24.0 fps). Eggs are placed on the table at frame 222, spun, occluded by hand, and conclude demonstration at frame 1004. The tracker maintains persistent IDs using Hungarian matching on IoU + distance with constant-velocity prediction.
 </p>
 <ul>
-  <li><strong>Fingertip Leakage Resolution:</strong> At frame 600, demonstrator hand contact caused baseline thresholding to leak into fingers. Incorporating YCrCb skin-color gating (Cr &isin; [135, 175], Cb &isin; [80, 125]) and larger opening eliminated false skin contour (gating reduced the total foreground mask by {full_skin_reduced} px over the whole frame; restricted to crop x in [200, 460], y in [300, 430], the mask was reduced by {crop_skin_reduced} px).</li>
+  <li><strong>Fingertip Leakage Resolution:</strong> At frame 600, demonstrator hand contact caused baseline thresholding to leak into fingers. Incorporating YCrCb skin-color gating (Cr &isin; [135, 175], Cb &isin; [80, 125]) and larger opening eliminated false skin contour (gating reduced the total foreground mask by {full_skin_reduced} px over the whole frame; restricted to crop x in [200, 460], y in [300, 430], the mask was reduced by {crop_skin_reduced} px). As shown with static image <code>not_damaged_130</code>, non-skin objects sharing warm orange/red chrominance could inadvertently be suppressed by skin gating, but here the wooden table and white eggshell fall outside this chrominance window, keeping the egg body mask completely intact (35,942 px retained).</li>
   <li><strong>Track Lifetimes & Event Statistics:</strong> {video_ids} unique tracks were created, with {loss_events} loss events and {recov_events} recoveries. Lifetimes: Egg 1 ({lifetimes.get('Egg 1', 0)} frames), Egg 2 ({lifetimes.get('Egg 2', 0)} frames), Egg 3 ({lifetimes.get('Egg 3', 0)} frames), Egg 4 ({lifetimes.get('Egg 4', 0)} frames), Egg 5 ({lifetimes.get('Egg 5', 0)} frames), Egg 6 ({lifetimes.get('Egg 6', 0)} frames).</li>
   <li><strong>Detection Continuity:</strong> In the 783 frames between first and last detection (frames 222 to 1004), at least one egg was detected in 782 of the 783 frames; exactly 1 frame had 0 detections (Frame 480).</li>
 </ul>

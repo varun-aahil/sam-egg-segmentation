@@ -32,6 +32,7 @@ def main():
             "points.json",
             "experiments.csv",
             "failure_tags.csv",
+            "tag_changes.md",
             "HANDOFF.md",
         ]:
             return True
@@ -40,6 +41,8 @@ def main():
         if rel.startswith("logs/"):
             return True
         if rel in ["report/report.pdf", "report/report.md", "report/report.html"]:
+            return True
+        if rel.startswith("report/figures/category_sheets/"):
             return True
         if rel.startswith("report/figures/"):
             return Path(rel).name in report_figures_used
@@ -100,3 +103,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
