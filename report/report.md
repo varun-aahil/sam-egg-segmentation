@@ -1,6 +1,6 @@
 # Egg Segmentation and Multi-Object Tracking Take-Home Report
 
-**Candidate:** Computer Vision Intern Take-Home  
+**Candidate:** Sree Varun Aahil  
 **Dataset:** Roboflow Egg Dataset (110 images, 640x640, grouped dev/eval 88/22)  
 **Video Test:** YouTube `Y4JyV94y2_A` (1280x720 table experiment, 1440 frames @ 24.0 fps)  
 **Submission Date:** October 30, 2026  
@@ -9,23 +9,23 @@
 
 ## 1. Executive Summary
 
-This project delivers a complete, verified computer vision system for egg segmentation and temporal tracking under real-world challenges (shadows, background clutter, boiling pots, touching eggs, and hand occlusions). All metrics, counts, and tables in this report are measured from actual code executions in this repository.
+This report presents an end-to-end computer vision solution for egg segmentation and multi-object tracking under challenging conditions, including touching instances, boiling water, high-contrast table textures, and hand occlusions. Ground truth masks were established via SAM (`vit_b` on CUDA) with human point/box prompts and an automated area and border contact audit. A classical image-processing pipeline was tuned strictly on the dev split across 18 controlled trials and evaluated once on the unseen eval split. A multi-object tracker was deployed on the 1440-frame table experiment video, incorporating YCrCb skin gating to eliminate hand occlusion leakage. All metrics, counts, and tables presented below are derived directly from runs of this repository.
 
 ### Key Measured Results
-- **Ground Truth Integrity:** 110 clean SAM masks generated via `SamPredictor` (vit_b on CUDA) using human point prompts and tight bounding boxes for boiling water edge cases. 0 flagged suspicious masks remaining.
-- **Classical Pipeline (Dev Split, n=88):** Pixel Mean IoU = **0.4018** (Median = 0.3147), Dice = **0.5200**, Detection F1 = **0.4087**, Mean Count Error = **2.20**.
-- **Classical Pipeline (Eval Split, n=22):** Pixel Mean IoU = **0.3196** (Median = 0.2502), Dice = **0.4239**, Detection F1 = **0.3206**, Mean Count Error = **1.68**.
-- **Video Tracking (1440 frames):** 1440 frames processed at 24.0 FPS. **6 unique tracks** created across the experiment, **0 ID switches** measured. Hand occlusion and fingertip leakage at frame 600 resolved using YCrCb skin gating and morphological opening (2,296 px of skin noise removed).
+- **Ground Truth Integrity:** 110 clean SAM masks generated via `SamPredictor` (`vit_b` on CUDA) using human point prompts and tight bounding boxes for boiling water edge cases. 0 flagged suspicious masks remaining.
+- **Classical Pipeline (Dev Split, n=88):** Pixel Mean IoU = **0.4018** (95% CI: [0.3435, 0.4603], Median = 0.3147), Dice = **0.5200**, Detection F1 = **0.4087**, Mean Count Error = **2.20**.
+- **Classical Pipeline (Eval Split, n=22):** Pixel Mean IoU = **0.3196** (95% CI: [0.1978, 0.4268], Median = 0.2502), Dice = **0.4239**, Detection F1 = **0.3206**, Mean Count Error = **1.68**.
+- **Video Tracking (1440 frames):** 1440 frames processed at 24.0 FPS. **6 unique tracks** created across the video, with **18 loss events** and **12 recoveries**. Hand occlusion and fingertip leakage at frame 600 resolved using YCrCb skin gating and morphological opening (2296 px of skin noise removed).
 
 ---
 
 ## 2. Task 1: Ground Truth Mask Generation (SAM)
 
 ### Approach
-- Model: Segment Anything Model (`vit_b`, 375 MB checkpoint) running on CUDA (`NVIDIA GeForce RTX 4070 Laptop GPU`).
+- Model: Segment Anything Model (`vit_b`, 375 MB checkpoint) running on CUDA.
 - Interactive point annotations stored in `points.json` via `src/annotate_points.py` with multi-mask score selection (`multimask_output=True`).
-- Hand-tuned shape and color filters were strictly removed from the ground-truth path to avoid contaminating evaluation metrics.
-- Ground Truth egg count distribution across 110 images:
+- Hand-tuned shape and color filters were strictly excluded from the ground-truth path to prevent artificial bias toward the classical segmentation pipeline.
+- Ground truth egg count distribution across 110 images:
   - **1 egg:** 93 images (84.5%)
   - **2 eggs:** 6 images (5.5%)
   - **3 eggs:** 11 images (10.0%)
@@ -51,7 +51,7 @@ A single parameterized pipeline `segment_pipeline` in `src/classical_segment.py`
 5. Instance Separation: Conservative Euclidean distance transform watershed.
 
 ### Controlled Experiment Progression
-Every trial changes **exactly one parameter** relative to its named parent. Keep/discard decisions compare strictly against the parent's dev IoU. If IoU is tied (+0.0000), trials are kept only if Detection F1 or Dice improves.
+Trials were tracked in `experiments.csv`. Keep/discard decisions compare strictly against the parent's dev IoU (with Detection F1 serving as an explicit tiebreaker). Note: Trial `watershed_conditional` modified two parameters relative to its parent (`area_filter_2500`): it enabled conditional watershed and set the peak distance threshold to `min_dist=50`. While pixel IoU remained tied at 0.4018 (since watershed divides connected components without changing overall foreground area), Detection F1 improved from 0.3084 to 0.4087 and count error improved from +3.82 to +2.20, justifying keeping the configuration.
 
 **The Kept Pipeline Chain:**  
 `baseline -> morph_small -> morph_medium -> morph_large -> area_filter_2500 -> watershed_conditional -> final (eval)`
@@ -99,36 +99,65 @@ Every trial changes **exactly one parameter** relative to its named parent. Keep
 | **Count Error (Mean)** | **2.20** | **1.68** | Mean signed count error (Pred - GT) |
 | **Count Error (Abs Mean)**| **2.20** | **1.77** | Mean absolute count error |
 
-### Metric Distributions
-![IoU Distribution Dev](figures/iou_dist_dev.png)
-*Figure 1: Pixel IoU distribution on Dev split showing bimodal performance between high-contrast scenes and camouflage scenes.*
+### Bootstrap 95% Confidence Intervals & Dev vs Eval Analysis
+- **Dev Split Mean IoU:** 0.4018 (Bootstrap 95% CI: [0.3435, 0.4603])
+- **Eval Split Mean IoU:** 0.3196 (Bootstrap 95% CI: [0.1978, 0.4268])
 
-![Count Scatter Dev](figures/count_scatter_dev.png)
-*Figure 2: Predicted vs True egg counts with jitter. Clustering along y=x demonstrates accurate single-egg count with conservative separation.*
+The eval split comprises 22 images, with 0 white-tray images (all 13 are in dev), and 3 backlit images (13.6% of eval) against 6 in dev (6.8%). Because the eval sample size is small (n=22), its bootstrap 95% confidence interval spans widely ([0.1978, 0.4268]) and fully encompasses the dev split mean (0.4018). Thus, the numerical difference between dev and eval cannot be attributed to a single cause or distribution shift.
+
+### Per-Category Dev vs Eval Split Breakdown
+
+| Category | Dev Count | Dev IoU | Eval Count | Eval IoU |
+|:---|:---:|:---:|:---:|:---:|
+| White egg on white tray / fridge interior | 13 | 0.1274 | 0 | 0.0000 |
+| Egg in boiling water / submerged | 6 | 0.1723 | 2 | 0.1756 |
+| Backlit / extreme shadows | 6 | 0.3354 | 3 | 0.5392 |
+| Tabletop / high-contrast background | 32 | 0.3659 | 8 | 0.2424 |
+| Multiple touching eggs | 13 | 0.5674 | 3 | 0.4886 |
+| Hand holding egg / fingers occluding | 11 | 0.6120 | 5 | 0.1502 |
+| Foliage / herbs in background (specular highlights) | 7 | 0.6906 | 1 | 0.9068 |
 
 ### Visual Failure Categorization (`failure_tags.csv`)
-All 110 dataset images were visually inspected and tagged with their physical scene category:
+All 110 dataset images were inspected and tagged by physical scene type. Images `not_damaged_123`, `125`, and `42` were tagged as *White egg on white tray / fridge interior*. Backlit hand shots `not_damaged_20`, `24`, and `44` were categorized under a unified rule: *Whenever intense directional backlighting or silhouette illumination is present behind the egg (even if supported by fingers), it is categorized under Backlit / extreme shadows because extreme illumination dynamic range is the primary driver of Otsu thresholding failure.*
 
 | Scene Category | Image Count | Pct of Dataset | Mean IoU | Mean Dice | Mean Det F1 | Primary Failure Mechanism |
 |:---|:---:|:---:|:---:|:---:|:---:|:---|
-| White egg on white tray / fridge interior | 10 | 9.1% | 0.1510 | 0.2579 | 0.0222 |
-| Egg in boiling water / submerged | 8 | 7.3% | 0.1731 | 0.2901 | 0.1399 |
-| Tabletop / high-contrast background | 44 | 40.0% | 0.3135 | 0.4377 | 0.3001 |
-| Hand holding egg / fingers occluding | 17 | 15.5% | 0.4409 | 0.5492 | 0.4902 |
-| Backlit / extreme shadows | 7 | 6.4% | 0.5169 | 0.5804 | 0.5000 |
-| Multiple touching eggs | 16 | 14.5% | 0.5526 | 0.6844 | 0.6972 |
-| Foliage / herbs in background (specular highlights) | 8 | 7.3% | 0.7177 | 0.8222 | 0.6854 |
+| White egg on white tray / fridge interior | 13 | 11.8% | 0.1274 | 0.2198 | 0.0171 | Near-zero photometric contrast between white eggshell and tray surface; Otsu floods tray. |
+| Egg in boiling water / submerged | 8 | 7.3% | 0.1731 | 0.2901 | 0.1399 | Bubbling cavitation, water refraction, and dark pot rims break convex boundary and flood liquid. |
+| Tabletop / high-contrast background | 40 | 36.4% | 0.3412 | 0.4744 | 0.3301 | Table surface grain, specular table highlights, or soft contact shadows falsely merge into foreground. |
+| Backlit / extreme shadows | 9 | 8.2% | 0.4033 | 0.4539 | 0.3889 | High-intensity directional backlight causes glowing core while shell perimeter falls into dark silhouette. |
+| Hand holding egg / fingers occluding | 16 | 14.5% | 0.4677 | 0.5821 | 0.5208 | Fingers occlude egg perimeter; skin tone overlaps shadow gradient, distending contour. |
+| Multiple touching eggs | 16 | 14.5% | 0.5526 | 0.6844 | 0.6972 | Touching instances share continuous boundary; requires distance watershed marker separation. |
+| Foliage / herbs in background (specular highlights) | 8 | 7.3% | 0.7177 | 0.8222 | 0.6854 | Egg is brighter than dark leaves in grayscale; specular reflections create occasional false blobs. |
 
-**Key Qualitative Takeaway:** Classical thresholding completely breaks down on *White egg on white tray / fridge interior* (IoU = 0.1510) and *Boiling water* (IoU = 0.1731) because global luminance is identical between foreground and background. Conversely, on *Foliage / herbs* (IoU = 0.7177) and *Standard table tops* (IoU = 0.3135), the egg contrasts well against chromatic surfaces.
+**Key Qualitative Takeaway:** Classical thresholding struggles most on *White egg on white tray / fridge interior* (Mean IoU = 0.1274) and *Boiling water* (Mean IoU = 0.1731) because global luminance is nearly identical between foreground and background. On *Foliage / herbs in background* (Mean IoU = 0.7177), the egg contrasts well because the egg shell is substantially brighter than dark leaves in grayscale; specular leaf highlights create occasional false blobs.
 
-### Galleries
-![Worst 8 Failure Cases](figures/failure_gallery_dev.png)
-*Figure 3: Worst 8 failures on Dev split (green = TP, red = FP, blue = FN). Clutter, identical tray color, and boiling liquid cause majority of errors.*
+### Metric Distributions
 
-![Best 8 Success Cases](figures/success_gallery_dev.png)
+![IoU Distribution Dev](figures/iou_dist_dev.png)
+*Figure 1a: Pixel IoU distribution on Dev split (n=88).*
+
+![IoU Distribution Eval](figures/iou_dist_eval.png)
+*Figure 1b: Pixel IoU distribution on Eval split (n=22).*
+
+![Count Scatter Dev](figures/count_scatter_dev.png)
+*Figure 2a: Predicted vs True egg counts on Dev split. Points lie mostly above y = x, illustrating that the classical algorithm systematically over-counts (mean count error +2.20) due to background clutter and specular highlights passing morphological filters.*
+
+![Count Scatter Eval](figures/count_scatter_eval.png)
+*Figure 2b: Predicted vs True egg counts on Eval split. Points similarly lie above y = x (mean count error +1.68).*
+
+### Visual Galleries
+
+![Worst 8 Failure Cases Dev](figures/failure_gallery_dev.png)
+*Figure 3a: Worst 8 failures on Dev split (green = TP, red = FP, blue = FN). White trays and boiling liquid dominate error cases.*
+
+![Worst 8 Failure Cases Eval](figures/failure_gallery_eval.png)
+*Figure 3b: Worst 8 failures on Eval split (green = TP, red = FP, blue = FN).*
+
+![Best 8 Success Cases Dev](figures/success_gallery_dev.png)
 *Figure 4: Best 8 successes on Dev split showing clean elliptical masks matching ground truth.*
 
-![Random 8 Representative Cases](figures/random_gallery_dev.png)
+![Random 8 Representative Cases Dev](figures/random_gallery_dev.png)
 *Figure 5: Random 8 representative cases illustrating typical operational performance across mixed illumination.*
 
 ---
@@ -137,54 +166,72 @@ All 110 dataset images were visually inspected and tagged with their physical sc
 
 ### Video Dataset
 - Video: YouTube `Y4JyV94y2_A` (1280x720 @ 24.0 fps, 1440 frames total).
-- Table demonstration comparing boiled and raw egg spinning. Eggs are placed at frame 222, spun, occluded by hand, and removed before frame 1000.
+- Table demonstration comparing boiled and raw egg spinning. Eggs are placed at frame 222, spun, occluded by hand, and removed before frame 1005.
 
 ### Video Tracking Architecture
-1. **Domain Adaptation:** Table ROI constraint (y >= 270) rejects shirt patterns; watermark suppression at bottom-right.
+1. **Domain Adaptation:** Table ROI constraint (y >= 270) rejects shirt patterns; watermark suppression at bottom-right (x >= 1040, y >= 600).
 2. **Hand & Fingertip Leakage Resolution:**
-   - At frame ~600, demonstrator's fingers brush against egg 1. Baseline thresholding caused segmentation to leak into pale fingertips.
+   - At frame ~600, demonstrator fingers brush against the egg. Baseline thresholding caused segmentation to leak into pale fingertips.
    - Fixed by incorporating **YCrCb skin-color gating** (`Cr in [135, 175] & Cb in [80, 125]`) combined with an elliptical morphological opening kernel (11x11).
-   - Removed **2,296 pixels** of skin noise at frame 600 while preserving egg contours.
+   - Removed **2296 pixels** of skin noise at frame 600 while preserving egg contours.
 3. **Hungarian Multi-Object Tracking:**
    - State representation: Centroid, bounding box, area, smoothed velocity vector `(vx, vy)`.
    - Motion prediction: Constant-velocity model with exponential decay (`decay = 0.90^lost`).
    - Cost Matrix: 30% mask IoU + 70% normalized Euclidean centroid distance.
    - Gating & ID Integrity: Distance threshold of 150 px. Unmatched detections exceeding 150 px from lost tracks spawn new tracks rather than falsely snapping across the table.
-   - True ID switches measured dynamically by monitoring spatial position conflicts.
+   - Spatial proximity conflict monitoring: Active tracks are checked for proximity anomalies; note that this measures internal spatial conflicts rather than true ground-truth identity continuity across physical removals.
 
 ### Frame 600 Fingertip Fix Comparison
 ![Frame 600 Comparison](figures/frame_600_comparison.png)
-*Figure 6: Hand near egg at frame 600. Left: Raw frame. Middle: Baseline leakage into fingertips (red). Right: YCrCb skin gating cleanly restricts contour to egg shell (green).*
+*Figure 6: Hand near egg at frame 600 (crop: x in [200, 460], y in [300, 430]). Left: Raw frame. Middle: Baseline leakage into fingertips (red). Right: YCrCb skin gating cleanly restricts contour to egg shell (green), removing 2296 px of skin noise.*
 
-### Video Tracking Results & Verification Contact Sheet
-- **Total Frames:** 1440 frames (658 frames in intro/outro handled gracefully with 0 detections).
-- **Unique IDs Created:** 6 tracks total. Egg 1 and Egg 2 enter at frame 222.
-- **Measured ID Switches:** **0** switches.
-- **Track Lifetimes:** Egg 1 (529 frames), Egg 2 (282 frames), Egg 4 (269 frames).
+### Video Tracking Statistics & Timeline
+- **Total Frames:** 1440 frames (782 frames with active detections, 658 frames without detection).
+- **Unique IDs Created:** 6 tracks total.
+- **Track Lifetimes:**
+  - Egg 1: 529 frames
+  - Egg 2: 282 frames
+  - Egg 3: 101 frames
+  - Egg 4: 269 frames
+  - Egg 5: 3 frames
+  - Egg 6: 190 frames
+- **Loss and Recovery Events:** 18 loss events, 12 recovery events.
+
+### Track Timeline
+
+| Track ID | Birth Frame | Last Active Frame | Lifetime (Frames) | Physical Egg Description | Visual Verification |
+|:---|:---:|:---:|:---:|:---|:---:|
+| Track 1 | 222 | 751 | 529 | Right egg (boiled), initial placement and spin sequence | Verified |
+| Track 2 | 222 | 504 | 282 | Left egg (raw), initial placement and spin sequence | Verified |
+| Track 3 | 546 | 647 | 101 | Demonstrator repositioned left egg to right table position | Verified |
+| Track 4 | 689 | 1004 | 269 | Boiled egg returned to left side until table clearance | Verified |
+| Track 5 | 800 | 802 | 3 | Transient motion-blur artifact (area ~3043-3715 px) during rapid raw egg spin | Confirmed spurious artifact (unverified physical egg) |
+| Track 6 | 810 | 1000 | 190 | Raw egg tracked through final spin sequence until removal | Verified |
+
+### Analysis of Track 5
+Track 5 lived for exactly 3 frames (F#800 to F#802) with areas between 3,043 and 3,715 px around centroid (721, 531). Frame inspection reveals that Track 5 is a transient motion-blur fragment of the rapidly spinning raw egg immediately before the tracker acquired Track 6 at F#810. In a production tracking deployment, transient tracks with lifetime < 5 frames should be filtered as false positives.
+
+### Known Tracking Failures & Zero-Detection Audit
+- **Frame 480 Missed Detection:** At frame 480, two eggs are physically present on the table, but the tracker outputs 0 detections. Inspection of the segmentation contour shows that the demonstrator's hand in contact with the egg caused contour solidity to drop to 0.7673, falling below the strict convexity threshold (`solidity >= 0.78`).
+- **Audit of Frames 222 to 1004:** Across the entire active demonstration interval (783 frames), exactly 1 frame (Frame 480) had zero detections. All other 782 frames had active detections.
+- **Breakdown of 658 Zero-Detection Frames:**
+  - 205 frames: Intro animated title card (F#0 to F#204)
+  - 17 frames: Empty table before egg placement (F#205 to F#221)
+  - 1 frame: Missed detection at F#480 (hand occlusion / solidity 0.7673)
+  - 10 frames: Empty table after egg removal (F#1005 to F#1014)
+  - 425 frames: Outro credits / title card (F#1015 to F#1439)
+  - Total: 205 + 17 + 1 + 10 + 425 = 658 frames.
 
 ![Video Tracking Contact Sheet](figures/tracking_contact_sheet.jpg)
 *Figure 7: Tracking Contact Sheet across 16 key video events (births, hand proximity at F#600, spins, and recoveries).*
 
 ---
 
-## 6. Interview Preparation & Technical Discussion
+## 6. Limitations and Future Work
 
-### Key Discussion Questions
-
-#### Q1: Why did classical image processing struggle so much on boiling pots and white trays?
-**Answer:** Classical methods rely on intensity or chromatic discontinuities at object boundaries. On a white styrofoam tray or white refrigerator shelf, the contrast gradient between the eggshell and surface is near-zero ($\Delta L^* pprox 0-5$). Otsu thresholding finds the dominant bimodal valley of the entire image, lumping the tray into the egg. In boiling pots, boiling bubbles cause rapid specular highlights and liquid refraction that break the assumption of a smooth convex boundary.
-
-#### Q2: Why Hungarian matching over DeepSORT or ByteTrack for this task?
-**Answer:** Eggs are featureless, homogeneous, rotationally symmetric objects. Appearance embeddings (such as CNN re-ID features used in DeepSORT) fail because different eggs have virtually identical texture and color embeddings. Hungarian matching with spatial distance + IoU and constant-velocity prediction is robust, lightweight, and does not require neural re-ID inference for every detection.
-
-#### Q3: Why SAM vit_b instead of vit_h?
-**Answer:** `vit_b` (91M parameters, 375 MB) achieves near-identical mask boundary quality to `vit_h` (632M parameters, 2.5 GB) when provided with clean point and box prompts, while running ~5x faster and operating smoothly within standard 8GB laptop GPU memory.
-
-#### Q4: What would you do next with more time?
-1. **Lightweight Deep Detector:** Train a YOLOv8-seg or Mask2Former on the 88 dev images using SAM masks as pseudo-ground truth. Deep learning models learn contextual semantic priors (e.g. recognizing "egg in tray") that are impossible for local pixel thresholding.
-2. **Active Contours (Snake / Chan-Vese):** For touching eggs or white-on-white trays, geometric snakes initialized with an elliptical shape prior can latch onto faint gradient boundaries.
-3. **Optical Flow for Video:** Dense Farneback or Lucas-Kanade optical flow could propagate egg masks across violent hand occlusions during the spinning test.
-
-#### Q5: What shortcuts were taken or limitations acknowledged?
-- **Domain ROI:** Video tracking used a table ROI constraint ($y \ge 270$) to suppress shirt patterns. In a generalized system, a person detector or table detector should dynamically establish the ROI.
-- **Eval Split Discipline:** The eval split was run strictly once after all dev decisions were finalized. Eval IoU (0.3196) dropped relative to dev (0.4018), reflecting honest out-of-sample generalization.
+1. **Ground Truth Annotation:** Ground truth masks were established via SAM (`vit_b`) prompted with human point and box coordinates. While audited for area and border anomalies, they represent semi-automated model outputs rather than manual polygon tracings.
+2. **Dataset Size:** The dataset contains 110 images (88 dev, 22 eval). Due to the small sample size in eval, statistical confidence intervals are wide, meaning differences across splits must be interpreted conservatively.
+3. **Watershed Behavior:** Distance transform watershed successfully separated touching instances (improving Detection F1 from 0.3084 to 0.4087 on dev), but had zero impact on pixel IoU (remaining 0.4018) because it partitions foreground without altering outer silhouette boundaries.
+4. **Domain-Specific Tuning:** Video tracking parameters (table ROI y >= 270, watermark bounds, YCrCb skin thresholds) were calibrated for this specific camera viewpoint and table illumination. Generalizing to varied environments would require automated surface or person detection.
+5. **Re-Identification Across Removals:** Smooth, textureless white eggs have near-identical visual appearance. When eggs are removed from view and placed back onto the table, identity assignment cannot be established with physical certainty under classical re-ID methods.
+6. **Future Deep Learning Extensions:** Training a semantic segmentation architecture (e.g. YOLOv8-seg or Mask2Former) on the dev set using SAM pseudo-masks could learn contextual semantic priors (such as distinguishing eggshells from white trays). Combining this with dense optical flow could bridge severe hand occlusions during spinning.
