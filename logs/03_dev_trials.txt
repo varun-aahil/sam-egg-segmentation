@@ -1,0 +1,42 @@
+Running all 18 tuning trials on dev split (88 images)...
+
+[baseline               | dev ] n=88, IoU=0.3513 (med 0.2648), Dice=0.4693, DetF1=0.2071, CntErr=3.12, time=7.1s
+
+[otsu_inv               | dev ] n=88, IoU=0.0823 (med 0.0592), Dice=0.1424, DetF1=0.0000, CntErr=3.36, time=7.1s
+
+[clahe_otsu             | dev ] n=88, IoU=0.2562 (med 0.2004), Dice=0.3791, DetF1=0.0799, CntErr=8.22, time=8.3s
+
+[adaptive_thresh        | dev ] n=88, IoU=0.0634 (med 0.0474), Dice=0.1119, DetF1=0.0065, CntErr=12.33, time=7.4s
+
+[lab_l                  | dev ] n=88, IoU=0.3244 (med 0.2352), Dice=0.4437, DetF1=0.1665, CntErr=3.67, time=5.6s
+
+[hsv_gate               | dev ] n=88, IoU=0.3456 (med 0.2698), Dice=0.4665, DetF1=0.1587, CntErr=4.32, time=5.6s
+
+[morph_small            | dev ] n=88, IoU=0.3558 (med 0.2642), Dice=0.4740, DetF1=0.2161, CntErr=2.89, time=5.3s
+
+[morph_medium           | dev ] n=88, IoU=0.3766 (med 0.2942), Dice=0.4964, DetF1=0.2363, CntErr=2.34, time=5.2s
+
+[morph_large            | dev ] n=88, IoU=0.3972 (med 0.3060), Dice=0.5161, DetF1=0.2642, CntErr=1.25, time=5.7s
+
+[border_polarity_m0     | dev ] n=88, IoU=0.3698 (med 0.2978), Dice=0.4821, DetF1=0.2409, CntErr=1.07, time=6.9s
+
+[border_polarity_m15    | dev ] n=88, IoU=0.3945 (med 0.3060), Dice=0.5119, DetF1=0.2596, CntErr=1.25, time=6.7s
+
+[lab_border_dist        | dev ] n=88, IoU=0.3603 (med 0.3208), Dice=0.4582, DetF1=0.2673, CntErr=2.55, time=6.6s
+
+[area_filter_2500       | dev ] n=88, IoU=0.4018 (med 0.3147), Dice=0.5200, DetF1=0.3084, CntErr=0.45, time=5.1s
+
+[component_ranking_top1 | dev ] n=88, IoU=0.3746 (med 0.2994), Dice=0.4761, DetF1=0.3295, CntErr=-0.33, time=4.8s
+
+[component_ranking_top3 | dev ] n=88, IoU=0.3972 (med 0.3147), Dice=0.5092, DetF1=0.3133, CntErr=0.27, time=5.0s
+
+[grabcut_refine         | dev ] n=88, IoU=0.4038 (med 0.2981), Dice=0.5177, DetF1=0.3073, CntErr=0.38, time=44.9s
+
+[watershed_always       | dev ] n=88, IoU=0.4018 (med 0.3147), Dice=0.5200, DetF1=0.3537, CntErr=3.90, time=10.8s
+
+[watershed_conditional  | dev ] n=88, IoU=0.4018 (med 0.3147), Dice=0.5200, DetF1=0.4087, CntErr=2.20, time=10.5s
+
+
+
+All dev tuning trials completed successfully! Log written to experiments.csv
+

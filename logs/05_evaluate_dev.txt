@@ -1,0 +1,30 @@
+
+
+=== DEV Set Evaluation (n=88) ===
+
+Pixel IoU:       mean=0.4018  median=0.3147
+
+Pixel Dice:      mean=0.5200  median=0.4787
+
+Pixel Precision: mean=0.4488
+
+Pixel Recall:    mean=0.8461
+
+Det Precision:   mean=0.3563
+
+Det Recall:      mean=0.5966
+
+Det F1:          mean=0.4087
+
+Count Error:     mean=2.20  abs mean=2.20
+
+
+
+Artifacts saved for DEV:
+
+  CSVs:    out\eval\dev\per_image.csv and out/eval/per_image_dev.csv
+
+  Summary: out\eval\dev\summary.json
+
+  Figures: out\eval\dev\figures and report/figures/
+

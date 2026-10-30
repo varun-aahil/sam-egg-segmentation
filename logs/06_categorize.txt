@@ -1,0 +1,56 @@
+
+
+Saved 110 records to failure_tags.csv
+
+
+
+Visual Failure Categories Breakdown (Full Dataset):
+
+--------------------------------------------------------------------------------------------------------------
+
+Category                                       Count     Pct   Mean IoU   Mean Dice   Mean F1
+
+--------------------------------------------------------------------------------------------------------------
+
+White egg on white tray / fridge interior         13   11.8%     0.1274      0.2198    0.0171
+
+Egg in boiling water / submerged                   8    7.3%     0.1731      0.2901    0.1399
+
+Tabletop / high-contrast background               40   36.4%     0.3412      0.4744    0.3301
+
+Backlit / extreme shadows                          9    8.2%     0.4033      0.4539    0.3889
+
+Hand holding egg / fingers occluding              16   14.5%     0.4677      0.5821    0.5208
+
+Multiple touching eggs                            16   14.5%     0.5526      0.6844    0.6972
+
+Foliage / herbs in background (specular highlights)      8    7.3%     0.7177      0.8222    0.6854
+
+--------------------------------------------------------------------------------------------------------------
+
+
+
+Per-Category Dev vs Eval Split Breakdown:
+
+-------------------------------------------------------------------------------------
+
+Category                                       Dev N   Dev IoU  Eval N   Eval IoU
+
+-------------------------------------------------------------------------------------
+
+White egg on white tray / fridge interior         13    0.1274       0     0.0000
+
+Egg in boiling water / submerged                   6    0.1723       2     0.1756
+
+Tabletop / high-contrast background               32    0.3659       8     0.2424
+
+Backlit / extreme shadows                          6    0.3354       3     0.5392
+
+Hand holding egg / fingers occluding              11    0.6120       5     0.1502
+
+Multiple touching eggs                            13    0.5674       3     0.4886
+
+Foliage / herbs in background (specular highlights)      7    0.6906       1     0.9068
+
+-------------------------------------------------------------------------------------
+

@@ -1,0 +1,2 @@
+[final                  | eval] n=22, IoU=0.3196 (med 0.2502), Dice=0.4239, DetF1=0.3206, CntErr=1.68, time=2.6s
+

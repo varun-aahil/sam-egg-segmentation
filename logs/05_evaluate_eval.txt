@@ -1,0 +1,30 @@
+
+
+=== EVAL Set Evaluation (n=22) ===
+
+Pixel IoU:       mean=0.3196  median=0.2502
+
+Pixel Dice:      mean=0.4239  median=0.4002
+
+Pixel Precision: mean=0.3449
+
+Pixel Recall:    mean=0.8749
+
+Det Precision:   mean=0.2758
+
+Det Recall:      mean=0.4621
+
+Det F1:          mean=0.3206
+
+Count Error:     mean=1.68  abs mean=1.77
+
+
+
+Artifacts saved for EVAL:
+
+  CSVs:    out\eval\eval\per_image.csv and out/eval/per_image_eval.csv
+
+  Summary: out\eval\eval\summary.json
+
+  Figures: out\eval\eval\figures and report/figures/
+
