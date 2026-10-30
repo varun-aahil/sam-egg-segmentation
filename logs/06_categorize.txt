@@ -1,56 +1,30 @@
-
-
-Saved 110 records to failure_tags.csv
-
-
-
-Visual Failure Categories Breakdown (Full Dataset):
-
---------------------------------------------------------------------------------------------------------------
-
-Category                                       Count     Pct   Mean IoU   Mean Dice   Mean F1
-
---------------------------------------------------------------------------------------------------------------
-
-White egg on white tray / fridge interior         13   11.8%     0.1274      0.2198    0.0171
-
-Egg in boiling water / submerged                   8    7.3%     0.1731      0.2901    0.1399
-
-Tabletop / high-contrast background               40   36.4%     0.3412      0.4744    0.3301
-
-Backlit / extreme shadows                          9    8.2%     0.4033      0.4539    0.3889
-
-Hand holding egg / fingers occluding              16   14.5%     0.4677      0.5821    0.5208
-
-Multiple touching eggs                            16   14.5%     0.5526      0.6844    0.6972
-
-Foliage / herbs in background (specular highlights)      8    7.3%     0.7177      0.8222    0.6854
-
---------------------------------------------------------------------------------------------------------------
-
-
-
-Per-Category Dev vs Eval Split Breakdown:
-
--------------------------------------------------------------------------------------
-
-Category                                       Dev N   Dev IoU  Eval N   Eval IoU
-
--------------------------------------------------------------------------------------
-
-White egg on white tray / fridge interior         13    0.1274       0     0.0000
-
-Egg in boiling water / submerged                   6    0.1723       2     0.1756
-
-Tabletop / high-contrast background               32    0.3659       8     0.2424
-
-Backlit / extreme shadows                          6    0.3354       3     0.5392
-
-Hand holding egg / fingers occluding              11    0.6120       5     0.1502
-
-Multiple touching eggs                            13    0.5674       3     0.4886
-
-Foliage / herbs in background (specular highlights)      7    0.6906       1     0.9068
-
--------------------------------------------------------------------------------------
-
+
+Saved 110 records to failure_tags.csv
+
+Visual Failure Categories Breakdown (Full Dataset):
+--------------------------------------------------------------------------------------------------------------
+Category                                              Count     Pct   Mean IoU   Mean Dice   Mean F1
+--------------------------------------------------------------------------------------------------------------
+Backlit / extreme shadows                                 3    2.7%     0.0071      0.0141    0.0000
+White egg on white tray / fridge interior                10    9.1%     0.0915      0.1646    0.0222
+Egg in boiling water / submerged                          8    7.3%     0.2464      0.3839    0.3207
+Hand holding egg / fingers occluding                     11   10.0%     0.2509      0.3767    0.2380
+Egg on container / lid / plain surface                   30   27.3%     0.2838      0.4058    0.2278
+Tabletop / high-contrast background                      31   28.2%     0.5565      0.6771    0.5862
+Multiple touching eggs                                   12   10.9%     0.6294      0.7513    0.7813
+Foliage / herbs in background (specular highlights)       5    4.5%     0.6805      0.8005    0.6467
+--------------------------------------------------------------------------------------------------------------
+
+Per-Category Dev vs Eval Split Breakdown:
+--------------------------------------------------------------------------------------------
+Category                                              Dev N   Dev IoU  Eval N   Eval IoU
+--------------------------------------------------------------------------------------------
+Backlit / extreme shadows                                 3    0.0071       0     0.0000
+White egg on white tray / fridge interior                 8    0.1003       2     0.0562
+Egg in boiling water / submerged                          5    0.2099       3     0.3072
+Hand holding egg / fingers occluding                      9    0.2822       2     0.1098
+Egg on container / lid / plain surface                   20    0.3161      10     0.2190
+Tabletop / high-contrast background                      27    0.5353       4     0.6997
+Multiple touching eggs                                   11    0.6148       1     0.7893
+Foliage / herbs in background (specular highlights)       5    0.6805       0     0.0000
+--------------------------------------------------------------------------------------------

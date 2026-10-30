@@ -6,7 +6,6 @@ import csv
 import json
 from pathlib import Path
 
-import cv2
 import numpy as np
 
 
@@ -26,14 +25,32 @@ def main():
 
     # Explanations of primary physical failure mechanisms
     mechanisms = {
-        "White egg on white tray / fridge interior": "Near-zero photometric contrast between white eggshell and tray surface; Otsu floods tray.",
+        "White egg on white tray / fridge interior": "Near-zero photometric contrast between white eggshell and white plastic tray or paper bag; Otsu floods background.",
         "Egg in boiling water / submerged": "Bubbling cavitation, water refraction, and dark pot rims break convex boundary and flood liquid.",
         "Backlit / extreme shadows": "High-intensity directional backlight causes glowing core while shell perimeter falls into dark silhouette.",
-        "Hand holding egg / fingers occluding": "Fingers occlude egg perimeter; skin tone overlaps shadow gradient, distending contour.",
-        "Tabletop / high-contrast background": "Table surface grain, specular table highlights, or soft contact shadows falsely merge into foreground.",
-        "Multiple touching eggs": "Touching instances share continuous boundary; requires distance watershed marker separation.",
-        "Foliage / herbs in background (specular highlights)": "Egg is brighter than dark leaves in grayscale; specular reflections create occasional false blobs.",
+        "Hand holding egg / fingers occluding": "Fingers or palm occlude egg perimeter; skin tone overlaps shadow gradient, distending contour into hand.",
+        "Multiple touching eggs": "Touching or adjacent instances share continuous boundary; requires distance watershed marker separation.",
+        "Foliage / herbs in background (specular highlights)": "Egg contrasts against dark foliage in grayscale; specular leaf reflections create occasional false blobs.",
+        "Egg on container / lid / plain surface": "Plastic food-container lids, bowls, metal pans, or plain packaging surfaces create perimeter reflections and false components.",
+        "Tabletop / high-contrast background": "Tabletop grain, hearth ash, patterned cloth tablecloths, or laptop keyboard keys introduce background clutter.",
     }
+
+    # Verified Visual Taxonomy mapping by image ID:
+    category_map = {
+        "Egg in boiling water / submerged": [124, 135, 145, 113, 129, 114, 128, 147],
+        "Foliage / herbs in background (specular highlights)": [10, 11, 12, 13, 49],
+        "Backlit / extreme shadows": [20, 24, 44],
+        "White egg on white tray / fridge interior": [42, 116, 117, 104, 106, 111, 112, 123, 125, 143],
+        "Hand holding egg / fingers occluding": [1, 2, 25, 102, 155, 157, 158, 160, 161, 151, 152],
+        "Multiple touching eggs": [103, 105, 115, 121, 132, 133, 134, 136, 140, 142, 148, 144],
+        "Egg on container / lid / plain surface": [110, 120, 139, 141, 108, 127, 130, 21, 22, 31, 35, 40, 34, 39, 156, 163, 150, 159, 149, 30, 107, 109, 118, 131, 138, 153, 32, 119, 122, 126],
+        "Tabletop / high-contrast background": [28, 33, 45, 100, 101, 146, 29, 14, 27, 36, 41, 50, 78, 3, 4, 5, 6, 16, 37, 52, 62, 95, 154, 162, 15, 55, 164, 17, 18, 19, 43]
+    }
+
+    id_to_cat = {}
+    for cat, ids in category_map.items():
+        for i in ids:
+            id_to_cat[i] = cat
 
     for rel in all_stems:
         p = Path("data") / rel
@@ -46,40 +63,9 @@ def main():
         n_pred = int(info["n_pred"])
         split = info["split"]
 
-        img = cv2.imread(str(p))
-        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-        h, s, v = hsv[:, :, 0], hsv[:, :, 1], hsv[:, :, 2]
-
-        green_pct = float(np.mean((h >= 35) & (h <= 85) & (s >= 50)))
-        skin_pct = float(np.mean((h >= 5) & (h <= 25) & (s >= 40) & (s <= 180) & (v >= 70)))
-        white_pct = float(np.mean((s < 40) & (v > 180)))
-        border_mask = np.ones(img.shape[:2], dtype=bool)
-        border_mask[40:-40, 40:-40] = False
-        dark_border = float(np.mean(v[border_mask] < 40))
-
-        # Explicit stem checks based on visual verification
-        boiling_pot_ids = ["118", "124", "135", "139", "143", "145", "147", "149"]
-        white_tray_fridge_ids = ["125", "123", "42", "104", "155"]
-        backlit_ids = ["20", "24", "44"]
-
-        if any(f"not_damaged_{num}_" in stem for num in boiling_pot_ids):
-            category = "Egg in boiling water / submerged"
-        elif any(f"not_damaged_{num}_" in stem for num in white_tray_fridge_ids):
-            category = "White egg on white tray / fridge interior"
-        elif any(f"not_damaged_{num}_" in stem for num in backlit_ids):
-            category = "Backlit / extreme shadows"
-        elif n_gt >= 2:
-            category = "Multiple touching eggs"
-        elif green_pct > 0.08:
-            category = "Foliage / herbs in background (specular highlights)"
-        elif dark_border > 0.35 or float(np.mean(v)) < 65:
-            category = "Backlit / extreme shadows"
-        elif skin_pct > 0.18:
-            category = "Hand holding egg / fingers occluding"
-        elif white_pct > 0.35:
-            category = "White egg on white tray / fridge interior"
-        else:
-            category = "Tabletop / high-contrast background"
+        short_stem = stem.split("_jpg")[0]
+        img_id = int(short_stem.replace("not_damaged_", ""))
+        category = id_to_cat[img_id]
 
         tagged_records.append({
             "image": stem,
@@ -127,7 +113,7 @@ def main():
     print(f"\nSaved {len(tagged_records)} records to {out_csv}")
     print("\nVisual Failure Categories Breakdown (Full Dataset):")
     print("-" * 110)
-    print(f"{'Category':<45} {'Count':>6} {'Pct':>7} {'Mean IoU':>10} {'Mean Dice':>11} {'Mean F1':>9}")
+    print(f"{'Category':<52} {'Count':>6} {'Pct':>7} {'Mean IoU':>10} {'Mean Dice':>11} {'Mean F1':>9}")
     print("-" * 110)
     for cat, vals in sorted(categories_agg.items(), key=lambda x: np.mean(x[1]["ious"])):
         n = len(vals["ious"])
@@ -135,21 +121,21 @@ def main():
         m_iou = np.mean(vals["ious"])
         m_dice = np.mean(vals["dices"])
         m_f1 = np.mean(vals["f1s"])
-        print(f"{cat:<45} {n:>6d} {pct:>6.1f}% {m_iou:>10.4f} {m_dice:>11.4f} {m_f1:>9.4f}")
+        print(f"{cat:<52} {n:>6d} {pct:>6.1f}% {m_iou:>10.4f} {m_dice:>11.4f} {m_f1:>9.4f}")
     print("-" * 110)
 
     # Per-category dev vs eval table
     print("\nPer-Category Dev vs Eval Split Breakdown:")
-    print("-" * 85)
-    print(f"{'Category':<45} {'Dev N':>6} {'Dev IoU':>9} {'Eval N':>7} {'Eval IoU':>10}")
-    print("-" * 85)
+    print("-" * 92)
+    print(f"{'Category':<52} {'Dev N':>6} {'Dev IoU':>9} {'Eval N':>7} {'Eval IoU':>10}")
+    print("-" * 92)
     for cat in sorted(categories_agg.keys(), key=lambda x: np.mean(categories_agg[x]["ious"])):
         d_n = len(dev_agg[cat]["ious"])
         d_iou = np.mean(dev_agg[cat]["ious"]) if d_n > 0 else 0.0
         e_n = len(eval_agg[cat]["ious"])
         e_iou = np.mean(eval_agg[cat]["ious"]) if e_n > 0 else 0.0
-        print(f"{cat:<45} {d_n:>6d} {d_iou:>9.4f} {e_n:>7d} {e_iou:>10.4f}")
-    print("-" * 85)
+        print(f"{cat:<52} {d_n:>6d} {d_iou:>9.4f} {e_n:>7d} {e_iou:>10.4f}")
+    print("-" * 92)
 
     # Save per_category_dev_eval.json
     dev_eval_table = {}
