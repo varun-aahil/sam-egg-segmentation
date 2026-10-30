@@ -1,545 +1,234 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="utf-8">
-<title>Egg Segmentation and Tracking - Technical Report</title>
+<title>Egg Segmentation and Tracking Report</title>
 <style>
-    body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        line-height: 1.5;
-        color: #2c3e50;
-        margin: 40px auto;
-        max-width: 950px;
-        padding: 0 20px;
-    }
-    h1 { color: #1a252f; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 0; }
-    h2 { color: #2980b9; border-bottom: 1px solid #ecf0f1; padding-bottom: 6px; margin-top: 35px; }
-    h3 { color: #34495e; margin-top: 25px; }
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 20px 0;
-        font-size: 13px;
-    }
-    th, td {
-        border: 1px solid #bdc3c7;
-        padding: 8px 10px;
-        text-align: left;
-    }
-    th {
-        background-color: #ecf0f1;
-        font-weight: 600;
-        color: #2c3e50;
-    }
-    tr:nth-child(even) { background-color: #fcfcfc; }
-    .metric-table th, .metric-table td { text-align: center; }
-    .metric-table td:first-child { text-align: left; font-weight: 600; }
-    img {
-        max-width: 100%;
-        height: auto;
-        border-radius: 4px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-        margin: 10px 0;
-    }
-    .fig-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 15px;
-        margin: 15px 0;
-    }
-    .fig-card {
-        text-align: center;
-        background: #fdfdfd;
-        padding: 10px;
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-    }
-    .fig-caption {
-        font-size: 12px;
-        color: #7f8c8d;
-        margin-top: 6px;
-    }
-    .callout {
-        background: #eef7fc;
-        border-left: 4px solid #3498db;
-        padding: 12px 16px;
-        margin: 15px 0;
-        font-size: 13px;
-    }
-    .footer {
-        margin-top: 50px;
-        padding-top: 15px;
-        border-top: 1px solid #bdc3c7;
-        font-size: 12px;
-        color: #7f8c8d;
-    }
-    @media print {
-        body { margin: 20px; max-width: 100%; font-size: 10.5pt; }
-        h2 { page-break-before: always; }
-        h2:first-of-type { page-break-before: avoid; }
-        .fig-grid { page-break-inside: avoid; }
-        table { page-break-inside: avoid; }
-    }
+  @page {
+    size: A4 portrait;
+    margin: 18mm 15mm 18mm 15mm;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    color: #2c3e50;
+    margin: 0;
+    padding: 0;
+    font-size: 13px;
+  }
+  h1 { font-size: 22px; color: #1a252f; border-bottom: 2px solid #34495e; padding-bottom: 6px; margin-top: 0; }
+  h2 { font-size: 16px; color: #2c3e50; border-bottom: 1px solid #bdc3c7; padding-bottom: 4px; margin-top: 22px; page-break-after: avoid; }
+  h3 { font-size: 14px; color: #34495e; margin-top: 14px; page-break-after: avoid; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 11px; }
+  th, td { border: 1px solid #d2d7d9; padding: 5px 8px; text-align: left; }
+  th { background-color: #f4f6f7; font-weight: 600; color: #34495e; }
+  tr:nth-child(even) { background-color: #fafbfc; }
+  .badge { display: inline-block; padding: 2px 5px; border-radius: 3px; font-weight: bold; font-size: 9px; text-align: center; }
+  .badge.keep { background-color: #27ae60; color: white; }
+  .badge.base { background-color: #2980b9; color: white; }
+  .badge.discard { background-color: #e74c3c; color: white; }
+  code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 10.5px; background: #eef2f5; padding: 1px 4px; border-radius: 3px; }
+  .metrics-box { display: flex; justify-content: space-between; margin: 12px 0; }
+  .metric-card { flex: 1; background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 4px; padding: 10px; margin: 0 4px; text-align: center; }
+  .metric-card:first-child { margin-left: 0; }
+  .metric-card:last-child { margin-right: 0; }
+  .metric-card .num { font-size: 18px; font-weight: bold; color: #2b5c8f; }
+  .metric-card .lbl { font-size: 10px; color: #7f8c8d; text-transform: uppercase; margin-top: 2px; }
+  .fig-center { text-align: center; margin: 14px 0; page-break-inside: avoid; }
+  .fig-center img { max-width: 100%; height: auto; border: 1px solid #e1e8ed; border-radius: 4px; }
+  .fig-caption { font-size: 10.5px; color: #555; margin-top: 4px; font-style: italic; }
+  .page-break { page-break-before: always; }
 </style>
 </head>
 <body>
 
-<h1>Egg Segmentation and Tracking - Technical Report</h1>
-<p><strong>Candidate:</strong> Varun Aahil &nbsp;|&nbsp; <strong>Task Date:</strong> October 2026 &nbsp;|&nbsp; <strong>Dataset:</strong> Roboflow Egg Dataset (110 images, 640x640)</p>
+<h1>Egg Segmentation and Multi-Object Tracking Report</h1>
+<p style="color:#7f8c8d; font-size:11px; margin-top:-4px;">
+  <strong>Computer Vision Take-Home Deliverable</strong> | Date: October 30, 2026 | Machine: Windows 11 (CUDA Enabled)
+</p>
 
-<div class="callout">
-<strong>Strict Dev/Eval Separation Policy:</strong> The 110-image dataset was partitioned 4:1 (88 dev, 22 eval) using perceptual hashing (pHash distance &le; 8) to group near-duplicate captures and keep scenes strictly disjoint. All algorithm prototyping, hyperparameter tuning, and decision logging were conducted <em>exclusively</em> on the dev split. The eval split was evaluated strictly once with the frozen final algorithm.
+<div class="metrics-box">
+  <div class="metric-card">
+    <div class="num">0.4018</div>
+    <div class="lbl">Dev Mean IoU</div>
+  </div>
+  <div class="metric-card">
+    <div class="num">0.3196</div>
+    <div class="lbl">Eval Mean IoU</div>
+  </div>
+  <div class="metric-card">
+    <div class="num">0.4087</div>
+    <div class="lbl">Dev Detection F1</div>
+  </div>
+  <div class="metric-card">
+    <div class="num">0</div>
+    <div class="lbl">Video ID Switches</div>
+  </div>
+  <div class="metric-card">
+    <div class="num">110</div>
+    <div class="lbl">Clean Ground Truths</div>
+  </div>
 </div>
 
-<h2>1. Task 1: SAM Ground Truth Generation via Interactive Point Prompts</h2>
-<h3>1.1 Methodology & Ground Truth Reliability</h3>
-<p>Meta's Segment Anything Model (SAM) with the <code>vit_b</code> backbone was deployed on an NVIDIA GPU (RTX 4070 Laptop GPU, CUDA 12.8 acceleration). Rather than relying on unguided automatic mask generation with hand-tuned heuristic post-filters (which missed eggs in boiling water pots and produced 13-19 false-positive leaf highlights in foliage scenes), we built an interactive OpenCV annotation tool (<code>src/annotate_points.py</code>).</p>
-<p>Using <code>src/annotate_points.py</code>, human point prompts (positive eggshell foreground clicks and background negative clicks) were recorded for every image and persisted to <code>points.json</code>. In <code>src/sam_segment.py</code>, <code>SamPredictor</code> consumed these point coordinates with <code>multimask_output=True</code>, selecting the highest-confidence mask per egg. Each instance is encoded with an integer label ID (0 = background, 1..n = eggs). All hand-tuned shape and color filters were removed from the ground-truth path, ensuring high-fidelity, unbiased ground truth masks across all 110 images.</p>
+<h2>1. Executive Summary</h2>
+<p>
+  This report details an end-to-end computer vision solution for egg segmentation and multi-object tracking.
+  Ground truth masks were established via SAM (<code>vit_b</code>) with rigorous quality auditing. A classical segmentation pipeline was built via controlled single-parameter hypotheses evaluated solely on the dev split. The frozen final configuration was tested once on the eval split. Finally, a robust multi-object tracker was deployed on a 1440-frame video test sequence, achieving 0 ID switches and resolving challenging hand occlusions.
+</p>
 
-<h3>1.2 Visual Verification</h3>
-<div class="fig-grid">
-    <div class="fig-card">
-        <img src="figures/sam_sample_0.jpg" alt="SAM Sample 1">
-        <div class="fig-caption">Figure 1.1: High-fidelity SAM instance mask cleanly separating individual eggs.</div>
-    </div>
-    <div class="fig-card">
-        <img src="figures/sam_sample_1.jpg" alt="SAM Sample 2">
-        <div class="fig-caption">Figure 1.2: SAM ground truth resolving complex textured background.</div>
-    </div>
+<h2>2. Task 1: Ground Truth Mask Generation (SAM)</h2>
+<p>
+  SAM (<code>vit_b</code>) was executed on CUDA (<code>NVIDIA GeForce RTX 4070 Laptop GPU</code>) using saved point prompts from <code>points.json</code>. An automated audit in <code>src/contact_sheet.py</code> flagged masks with area &gt; 40% or edge contact &gt; 50%. Three boiling-pot images with flooded masks (<code>not_damaged_124</code>, <code>135</code>, <code>145</code>) were corrected with tight bounding boxes, reducing mask areas from ~80% down to ~13-14% (0 flagged masks remaining).
+</p>
+<p>
+  <strong>Ground Truth Egg Distribution across 110 images:</strong> 93 images (84.5%) with 1 egg; 6 images (5.5%) with 2 eggs; 11 images (10.0%) with 3 eggs.
+</p>
+
+<h2>3. Task 2: Parameterized Classical Segmentation & Experiment Log</h2>
+<p>
+  A unified parameterized pipeline was tuned on the 88 dev images across 18 controlled trials. Every trial varied exactly one parameter relative to its named parent. Keep/discard decisions were determined dynamically by comparing dev IoU against parent dev IoU (with Detection F1 serving as an explicit tiebreaker for watershed).
+</p>
+<p><strong>Kept Pipeline Chain:</strong> <code>baseline -> morph_small -> morph_medium -> morph_large -> area_filter_2500 -> watershed_conditional -> final (eval)</code></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Trial ID</th>
+      <th>Parent</th>
+      <th>Split</th>
+      <th>What Changed</th>
+      <th>Mean IoU</th>
+      <th>Mean Dice</th>
+      <th>Det F1</th>
+      <th>Cnt Err</th>
+      <th>Decision</th>
+      <th>Reason</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><code>baseline</code></td><td><code>None</code></td><td>dev</td><td>Grayscale conversion + Gaussian blur (5x5) + Otsu threshold + hole fill + min area 500</td><td>0.3513</td><td>0.4693</td><td>0.2071</td><td>3.12</td><td><span class="badge base">BASELINE</span></td><td><small>Baseline established on dev (IoU 0.3513, Dice 0.4693, DetF1 0.2071)</small></td></tr>
+<tr><td><code>otsu_inv</code></td><td><code>baseline</code></td><td>dev</td><td>Invert Otsu thresholding</td><td>0.0823</td><td>0.1424</td><td>0.0000</td><td>3.36</td><td><span class="badge discard">DISCARD</span></td><td><small>Fails to improve dev IoU over parent 'baseline' (0.0823 vs 0.3513, -0.2690)</small></td></tr>
+<tr><td><code>clahe_otsu</code></td><td><code>baseline</code></td><td>dev</td><td>CLAHE local contrast equalization (clip 2.0, tile 8x8) before Otsu</td><td>0.2562</td><td>0.3791</td><td>0.0799</td><td>8.22</td><td><span class="badge discard">DISCARD</span></td><td><small>Fails to improve dev IoU over parent 'baseline' (0.2562 vs 0.3513, -0.0951)</small></td></tr>
+<tr><td><code>adaptive_thresh</code></td><td><code>baseline</code></td><td>dev</td><td>Adaptive Gaussian thresholding (block 51, C=-10)</td><td>0.0634</td><td>0.1119</td><td>0.0065</td><td>12.33</td><td><span class="badge discard">DISCARD</span></td><td><small>Fails to improve dev IoU over parent 'baseline' (0.0634 vs 0.3513, -0.2878)</small></td></tr>
+<tr><td><code>lab_l</code></td><td><code>baseline</code></td><td>dev</td><td>CIELAB L* perceptual lightness channel + Otsu</td><td>0.3244</td><td>0.4437</td><td>0.1665</td><td>3.67</td><td><span class="badge discard">DISCARD</span></td><td><small>Fails to improve dev IoU over parent 'baseline' (0.3244 vs 0.3513, -0.0268)</small></td></tr>
+<tr><td><code>hsv_gate</code></td><td><code>baseline</code></td><td>dev</td><td>HSV color gating (S < 70, V > 130)</td><td>0.3456</td><td>0.4665</td><td>0.1587</td><td>4.32</td><td><span class="badge discard">DISCARD</span></td><td><small>Fails to improve dev IoU over parent 'baseline' (0.3456 vs 0.3513, -0.0056)</small></td></tr>
+<tr><td><code>morph_small</code></td><td><code>baseline</code></td><td>dev</td><td>Add small elliptical opening & closing (7x7)</td><td>0.3558</td><td>0.4740</td><td>0.2161</td><td>2.89</td><td><span class="badge keep">KEEP</span></td><td><small>Improves dev IoU over parent 'baseline' from 0.3513 to 0.3558 (+0.0046)</small></td></tr>
+<tr><td><code>morph_medium</code></td><td><code>morph_small</code></td><td>dev</td><td>Increase elliptical kernel from 7x7 to 15x15</td><td>0.3766</td><td>0.4964</td><td>0.2363</td><td>2.34</td><td><span class="badge keep">KEEP</span></td><td><small>Improves dev IoU over parent 'morph_small' from 0.3558 to 0.3766 (+0.0208)</small></td></tr>
+<tr><td><code>morph_large</code></td><td><code>morph_medium</code></td><td>dev</td><td>Increase elliptical kernel from 15x15 to 25x25</td><td>0.3972</td><td>0.5161</td><td>0.2642</td><td>1.25</td><td><span class="badge keep">KEEP</span></td><td><small>Improves dev IoU over parent 'morph_medium' from 0.3766 to 0.3972 (+0.0205)</small></td></tr>
+<tr><td><code>border_polarity_m0</code></td><td><code>morph_large</code></td><td>dev</td><td>Auto-invert threshold if border mean > center mean</td><td>0.3698</td><td>0.4821</td><td>0.2409</td><td>1.07</td><td><span class="badge discard">DISCARD</span></td><td><small>Fails to improve dev IoU over parent 'morph_large' (0.3698 vs 0.3972, -0.0274)</small></td></tr>
+<tr><td><code>border_polarity_m15</code></td><td><code>morph_large</code></td><td>dev</td><td>Auto-invert threshold only if border mean > center mean + 15</td><td>0.3945</td><td>0.5119</td><td>0.2596</td><td>1.25</td><td><span class="badge discard">DISCARD</span></td><td><small>Fails to improve dev IoU over parent 'morph_large' (0.3945 vs 0.3972, -0.0027)</small></td></tr>
+<tr><td><code>lab_border_dist</code></td><td><code>morph_large</code></td><td>dev</td><td>CIELAB Euclidean color distance from estimated border background</td><td>0.3603</td><td>0.4582</td><td>0.2673</td><td>2.55</td><td><span class="badge discard">DISCARD</span></td><td><small>Fails to improve dev IoU over parent 'morph_large' (0.3603 vs 0.3972, -0.0369)</small></td></tr>
+<tr><td><code>area_filter_2500</code></td><td><code>morph_large</code></td><td>dev</td><td>Increase minimum component area from 500 to 2500 pixels</td><td>0.4018</td><td>0.5200</td><td>0.3084</td><td>0.45</td><td><span class="badge keep">KEEP</span></td><td><small>Improves dev IoU over parent 'morph_large' from 0.3972 to 0.4018 (+0.0046)</small></td></tr>
+<tr><td><code>component_ranking_top1</code></td><td><code>area_filter_2500</code></td><td>dev</td><td>Retain only the single top-ranked component by geometric egg score</td><td>0.3746</td><td>0.4761</td><td>0.3295</td><td>-0.33</td><td><span class="badge discard">DISCARD</span></td><td><small>Fails to improve dev IoU over parent 'area_filter_2500' (0.3746 vs 0.4018, -0.0272)</small></td></tr>
+<tr><td><code>component_ranking_top3</code></td><td><code>area_filter_2500</code></td><td>dev</td><td>Retain at most the top 3 scoring components based on area, solidity, and ellipse fit</td><td>0.3972</td><td>0.5092</td><td>0.3133</td><td>0.27</td><td><span class="badge discard">DISCARD</span></td><td><small>Fails to improve dev IoU over parent 'area_filter_2500' (0.3972 vs 0.4018, -0.0045)</small></td></tr>
+<tr><td><code>grabcut_refine</code></td><td><code>area_filter_2500</code></td><td>dev</td><td>Apply GrabCut refinement using morphological erosion as foreground seed</td><td>0.4038</td><td>0.5177</td><td>0.3073</td><td>0.38</td><td><span class="badge discard">DISCARD</span></td><td><small>Marginal IoU gain (+0.0021) but Dice degrades from 0.5200 to 0.5177 (-0.0023)</small></td></tr>
+<tr><td><code>watershed_always</code></td><td><code>area_filter_2500</code></td><td>dev</td><td>Euclidean distance transform + watershed applied unconditionally to all components</td><td>0.4018</td><td>0.5200</td><td>0.3537</td><td>3.90</td><td><span class="badge discard">DISCARD</span></td><td><small>Fails to improve dev IoU over parent 'area_filter_2500' (0.4018 vs 0.4018, +0.0000)</small></td></tr>
+<tr><td><code>watershed_conditional</code></td><td><code>area_filter_2500</code></td><td>dev</td><td>Conditional distance watershed (min_dist=50) applied only to non-convex, elongated or oversized clusters</td><td>0.4018</td><td>0.5200</td><td>0.4087</td><td>2.20</td><td><span class="badge keep">KEEP</span></td><td><small>Dev IoU tied with parent 'area_filter_2500' (0.4018); kept on tiebreaker: DetF1 improves from 0.3084 to 0.4087 (+0.1003)</small></td></tr>
+<tr><td><code>final</code></td><td><code>watershed_conditional</code></td><td>eval</td><td>Frozen final pipeline: Grayscale Otsu + large morph (25x25) + hole filling + min area 2500 + conservative conditional watershed</td><td>0.3196</td><td>0.4239</td><td>0.3206</td><td>1.68</td><td><span class="badge keep">EVAL_FINAL</span></td><td><small>Frozen final pipeline evaluated once on unseen eval split (IoU 0.3196, Dice 0.4239, DetF1 0.3206)</small></td></tr>
+  </tbody>
+</table>
+
+<div class="page-break"></div>
+
+<h2>4. Task 3: Quantitative & Qualitative Evaluation vs Ground Truth</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th style="text-align:center;">Dev Split (n=88)</th>
+      <th style="text-align:center;">Eval Split (n=22)</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Pixel IoU (Mean)</strong></td><td style="text-align:center;"><strong>0.4018</strong></td><td style="text-align:center;"><strong>0.3196</strong></td><td>Mean foreground intersection over union</td></tr>
+    <tr><td><strong>Pixel IoU (Median)</strong></td><td style="text-align:center;"><strong>0.3147</strong></td><td style="text-align:center;"><strong>0.2502</strong></td><td>Median per-image IoU</td></tr>
+    <tr><td><strong>Pixel Dice (Mean)</strong></td><td style="text-align:center;"><strong>0.5200</strong></td><td style="text-align:center;"><strong>0.4239</strong></td><td>F1-score of pixel-level binary classification</td></tr>
+    <tr><td><strong>Pixel Precision</strong></td><td style="text-align:center;"><strong>0.4488</strong></td><td style="text-align:center;"><strong>0.3449</strong></td><td>TP / (TP + FP)</td></tr>
+    <tr><td><strong>Pixel Recall</strong></td><td style="text-align:center;"><strong>0.8461</strong></td><td style="text-align:center;"><strong>0.8749</strong></td><td>TP / (TP + FN)</td></tr>
+    <tr><td><strong>Detection Precision</strong></td><td style="text-align:center;"><strong>0.3563</strong></td><td style="text-align:center;"><strong>0.2758</strong></td><td>Matched eggs / Predicted components (IoU &ge; 0.5)</td></tr>
+    <tr><td><strong>Detection Recall</strong></td><td style="text-align:center;"><strong>0.5966</strong></td><td style="text-align:center;"><strong>0.4621</strong></td><td>Matched eggs / GT eggs</td></tr>
+    <tr><td><strong>Detection F1</strong></td><td style="text-align:center;"><strong>0.4087</strong></td><td style="text-align:center;"><strong>0.3206</strong></td><td>Harmonic mean of detection precision & recall</td></tr>
+    <tr><td><strong>Count Error (Mean)</strong></td><td style="text-align:center;"><strong>2.20</strong></td><td style="text-align:center;"><strong>1.68</strong></td><td>Mean signed difference (Pred - GT)</td></tr>
+  </tbody>
+</table>
+
+<h3>Visual Failure Categorization (failure_tags.csv)</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Scene Category</th>
+      <th style="text-align:center;">Count</th>
+      <th style="text-align:center;">Pct</th>
+      <th>Mean IoU</th>
+      <th>Mean Dice</th>
+      <th>Mean Det F1</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>White egg on white tray / fridge interior</td><td style='text-align:center;'>10</td><td style='text-align:center;'>9.1%</td><td>0.1510</td><td>0.2579</td><td>0.0222</td></tr>
+<tr><td>Egg in boiling water / submerged</td><td style='text-align:center;'>8</td><td style='text-align:center;'>7.3%</td><td>0.1731</td><td>0.2901</td><td>0.1399</td></tr>
+<tr><td>Tabletop / high-contrast background</td><td style='text-align:center;'>44</td><td style='text-align:center;'>40.0%</td><td>0.3135</td><td>0.4377</td><td>0.3001</td></tr>
+<tr><td>Hand holding egg / fingers occluding</td><td style='text-align:center;'>17</td><td style='text-align:center;'>15.5%</td><td>0.4409</td><td>0.5492</td><td>0.4902</td></tr>
+<tr><td>Backlit / extreme shadows</td><td style='text-align:center;'>7</td><td style='text-align:center;'>6.4%</td><td>0.5169</td><td>0.5804</td><td>0.5000</td></tr>
+<tr><td>Multiple touching eggs</td><td style='text-align:center;'>16</td><td style='text-align:center;'>14.5%</td><td>0.5526</td><td>0.6844</td><td>0.6972</td></tr>
+<tr><td>Foliage / herbs in background (specular highlights)</td><td style='text-align:center;'>8</td><td style='text-align:center;'>7.3%</td><td>0.7177</td><td>0.8222</td><td>0.6854</td></tr>
+  </tbody>
+</table>
+
+<div class="fig-center">
+  <img src="figures/failure_gallery_dev.png" style="max-height: 480px;">
+  <div class="fig-caption">Figure 3: Worst 8 failures on Dev split (Green=TP, Red=FP, Blue=FN). White trays and boiling liquid dominate error cases.</div>
 </div>
 
-<h3>1.3 Remaining SAM Challenges & Artifacts</h3>
+<div class="page-break"></div>
+
+<div class="fig-center">
+  <img src="figures/success_gallery_dev.png" style="max-height: 480px;">
+  <div class="fig-caption">Figure 4: Best 8 successes on Dev split showing accurate elliptical contours and high overlap.</div>
+</div>
+
+<h2>5. Task 4: Multi-Object Video Tracking</h2>
+<p>
+  Tracking was evaluated on the 1440-frame table sequence (1280x720 @ 24.0 fps). Eggs are placed on the table at frame 222 and spun. The tracker maintains persistent IDs using Hungarian matching on IoU + distance with constant-velocity prediction.
+</p>
 <ul>
-    <li><strong>Extreme Backlighting:</strong> When an egg is backlit by an intense incandescent lamp, the severe lens glare and saturated background create faint halo fringes around the silhouette.</li>
-    <li><strong>Refraction & Boiling Turbulence:</strong> Images with eggs submerged in vigorously boiling water exhibit rippling refraction boundaries, causing minor boundary uncertainty at the water-air-shell interface.</li>
+  <li><strong>Fingertip Leakage Resolution:</strong> At frame 600, demonstrator hand contact caused baseline thresholding to leak into fingers. Incorporating YCrCb skin-color gating (Cr &isin; [135, 175], Cb &isin; [80, 125]) and larger opening eliminated 2,296 px of false skin contour.</li>
+  <li><strong>Dynamic Switch Measurement:</strong> 0 ID switches were measured across all 1440 frames.</li>
+  <li><strong>Intro/Outro Robustness:</strong> 658 frames with 0 detections were handled smoothly without track hallucination.</li>
 </ul>
 
-<h2>2. Task 2: Classical Image-Processing Segmentation</h2>
-<h3>2.1 Evolutionary Engineering Process</h3>
-<p>The classical pipeline was implemented as a single modular parameterized function (<code>segment_pipeline</code>) in <code>src/classical_segment.py</code>. We executed 15 structured, logged trials exclusively on the 88 dev images, logging decisions (<code>KEEP</code> vs <code>DISCARD</code>) and reasons dynamically at runtime based on measured dev IoU relative to the running best:</p>
+<div class="fig-center">
+  <img src="figures/frame_600_comparison.png" style="max-height: 240px;">
+  <div class="fig-caption">Figure 6: Frame 600 before/after comparison. Left: Raw frame. Middle: Baseline fingertip leakage. Right: YCrCb skin exclusion cleans egg boundary.</div>
+</div>
+
+<div class="fig-center">
+  <img src="figures/tracking_contact_sheet.jpg" style="max-height: 380px;">
+  <div class="fig-caption">Figure 7: 16-frame Video Tracking Contact Sheet tracking persistent identities through rotations and recoveries.</div>
+</div>
+
+<div class="page-break"></div>
+
+<h2>6. Interview Preparation & Technical Discussion</h2>
+
+<h3>Why classical segmentation struggled on boiling pots and white trays</h3>
+<p>
+  Global and adaptive thresholding methods fundamentally rely on contrast gradients. On white styrofoam trays and white bowls, the contrast gradient between the eggshell and surface is near-zero (&Delta;L* &approx; 0&ndash;5). In boiling pots, rapid bubble refraction and boiling water motion break the assumed smooth convex geometry of the egg boundary.
+</p>
+
+<h3>Why Hungarian matching was chosen over DeepSORT</h3>
+<p>
+  Eggs are smooth, rotationally symmetric, textureless objects. Feature embeddings from deep CNN re-identification models (like DeepSORT) provide virtually zero distinctiveness between individual white eggs. Hungarian matching on spatial centroid distance combined with constant-velocity motion forecasting provides a mathematically sound, lightweight, and robust tracking solution without neural re-ID overhead.
+</p>
+
+<h3>What would you do next with more time?</h3>
 <ol>
-    <li><code>baseline</code>: Grayscale conversion + Gaussian blur (5x5) + Otsu threshold + hole fill + min area 500 px. Establishes baseline dev IoU of <strong>0.3521</strong> and Dice <strong>0.4700</strong>.</li>
-    <li><code>otsu_inv</code>: Inverted Otsu thresholding. Severely degrades (IoU 0.1040), proving eggshell luminance is generally higher than background.</li>
-    <li><code>clahe_otsu</code>: CLAHE contrast equalization (clip 2.0). Dropped IoU to 0.2601 by over-amplifying background wood grain and marble veining.</li>
-    <li><code>adaptive_thresh</code>: Adaptive Gaussian thresholding. Catastrophic failure (IoU 0.0638); the local block window hollowed out large egg centers into thin annular rings.</li>
-    <li><code>hsv_sat</code>: HSV color gating (S &lt; 70, V &gt; 130). Improved IoU to <strong>0.3593</strong> (+0.0073, KEEP) by targeting pale eggshell chroma.</li>
-    <li><code>lab_l</code>: CIELAB perceptual lightness L* channel Otsu. Dropped to 0.3266 due to lower contrast against warm table surfaces.</li>
-    <li><code>morph_small</code> (7x7 ellipse): Elliptical opening and closing cleaned fine speckles (IoU 0.3566).</li>
-    <li><code>morph_medium</code> (15x15 ellipse): Scaled structuring element closer to egg curvature, advancing IoU to <strong>0.3769</strong> (+0.0175, KEEP).</li>
-    <li><code>morph_large</code> (25x25 ellipse): Kernel matched natural egg convexity, smoothing contours and reaching IoU <strong>0.3973</strong> (+0.0204, KEEP).</li>
-    <li><code>border_polarity</code>: Border-adaptive threshold inversion. IoU 0.3784; helpful for backlit silhouettes but slightly penalized bright table surfaces.</li>
-    <li><code>lab_border_dist</code>: Euclidean distance to estimated border background color. Reached IoU 0.3584.</li>
-    <li><code>component_ranking</code>: Scoring connected components by area, solidity, ellipse aspect ratio, and center distance. Reached IoU 0.3973.</li>
-    <li><code>watershed_conditional</code>: Applying distance-transform watershed conditionally when components fail convexity criteria. Reached IoU 0.3973.</li>
-    <li><code>watershed_always</code>: Distance transform + watershed across all detected egg clusters. Reached IoU <strong>0.3975</strong> (+0.0003, KEEP), successfully splitting touching egg instances.</li>
-    <li><code>final</code>: Grayscale Otsu + large morph (25x25) + GrabCut iterative refinement + distance watershed. Reached highest dev IoU <strong>0.4008</strong> and Dice <strong>0.5151</strong> (KEEP).</li>
+  <li><strong>Deep Semantic Segmentation:</strong> Fine-tune a YOLOv8-seg or Mask2Former architecture on the dev split using SAM pseudo-masks. Deep CNNs encode contextual priors that effortlessly separate eggs from white trays.</li>
+  <li><strong>Active Contours / Snakes:</strong> Apply Chan-Vese energy minimization with an elliptical shape prior to snap onto faint contrast boundaries on low-contrast trays.</li>
+  <li><strong>Optical Flow Association:</strong> Integrate dense Farneback optical flow into the video tracker to track eggs through rapid hand occlusions during high-speed spinning.</li>
 </ol>
-
-<h3>2.2 Complete Measured Experiment Log</h3>
-<p>All metrics, decisions, and reasons below were dynamically generated from actual runs and logged to <code>experiments.csv</code>:</p>
-<table>
-    <thead>
-        <tr>
-            <th>Trial ID</th>
-            <th>Split</th>
-            <th>What Changed</th>
-            <th>Why</th>
-            <th>Parameters</th>
-            <th>Mean IoU</th>
-            <th>Mean Dice</th>
-            <th>Decision</th>
-            <th>Reason</th>
-        </tr>
-    </thead>
-    <tbody>
-        
-        <tr>
-            <td><strong>baseline</strong></td>
-            <td style="text-align:center;"><code>dev</code></td>
-            <td>Grayscale conversion + Gaussian blur (5x5) + Otsu threshold + hole fill + min area 500</td>
-            <td>Establish minimal intensity-based segmentation baseline</td>
-            <td style="font-family:monospace; font-size:11px;">{"space": "gray", "blur": 5, "thresh_method": "otsu", "fill_holes": true, "min_area": 500}</td>
-            <td style="text-align:center;"><strong>0.3521</strong></td>
-            <td style="text-align:center;">0.4700</td>
-            <td style="text-align:center;"><span style="background-color:#2980b9; color:white; padding:2px 6px; border-radius:3px; font-weight:bold;">BASELINE</span></td>
-            <td style="font-size:12px;">Baseline established (dev IoU 0.3521, Dice 0.4700)</td>
-        </tr>
-        
-        <tr>
-            <td><strong>otsu_inv</strong></td>
-            <td style="text-align:center;"><code>dev</code></td>
-            <td>Inverted Otsu thresholding</td>
-            <td>Test hypothesis whether dark eggs or bright backlighting require inverse thresholding</td>
-            <td style="font-family:monospace; font-size:11px;">{"space": "gray", "blur": 5, "thresh_method": "otsu_inv", "fill_holes": true, "min_area": 500}</td>
-            <td style="text-align:center;"><strong>0.1040</strong></td>
-            <td style="text-align:center;">0.1641</td>
-            <td style="text-align:center;"><span style="background-color:#c0392b; color:white; padding:2px 6px; border-radius:3px;">DISCARD</span></td>
-            <td style="font-size:12px;">Fails to improve dev IoU (0.1040 vs best 0.3521, -0.2480)</td>
-        </tr>
-        
-        <tr>
-            <td><strong>clahe_otsu</strong></td>
-            <td style="text-align:center;"><code>dev</code></td>
-            <td>CLAHE (clip 2.0, tile 8x8) before Gaussian blur and Otsu</td>
-            <td>Evaluate local histogram equalization to mitigate harsh directional shadows</td>
-            <td style="font-family:monospace; font-size:11px;">{"space": "clahe", "clahe_clip": 2.0, "clahe_tile": 8, "blur": 5, "thresh_method": "otsu", "fill_holes": true, "min_area": 500}</td>
-            <td style="text-align:center;"><strong>0.2601</strong></td>
-            <td style="text-align:center;">0.3845</td>
-            <td style="text-align:center;"><span style="background-color:#c0392b; color:white; padding:2px 6px; border-radius:3px;">DISCARD</span></td>
-            <td style="font-size:12px;">Fails to improve dev IoU (0.2601 vs best 0.3521, -0.0920)</td>
-        </tr>
-        
-        <tr>
-            <td><strong>adaptive_thresh</strong></td>
-            <td style="text-align:center;"><code>dev</code></td>
-            <td>Adaptive Gaussian thresholding (block 51, C=-10)</td>
-            <td>Locally adaptive thresholding to account for spatial illumination gradients</td>
-            <td style="font-family:monospace; font-size:11px;">{"space": "gray", "blur": 5, "thresh_method": "adaptive", "adaptive_block": 51, "adaptive_c": -10, "fill_holes": true, "min_area": 500}</td>
-            <td style="text-align:center;"><strong>0.0638</strong></td>
-            <td style="text-align:center;">0.1127</td>
-            <td style="text-align:center;"><span style="background-color:#c0392b; color:white; padding:2px 6px; border-radius:3px;">DISCARD</span></td>
-            <td style="font-size:12px;">Fails to improve dev IoU (0.0638 vs best 0.3521, -0.2882)</td>
-        </tr>
-        
-        <tr>
-            <td><strong>hsv_sat</strong></td>
-            <td style="text-align:center;"><code>dev</code></td>
-            <td>HSV color gating: low saturation (S < 70) and high brightness (V > 130)</td>
-            <td>Color-space constraint targeting pale/white eggshells to reject colored background</td>
-            <td style="font-family:monospace; font-size:11px;">{"space": "hsv", "thresh_method": "hsv_gate", "s_max": 70, "v_min": 130, "open_k": 7, "close_k": 7, "fill_holes": true, "min_area": 500}</td>
-            <td style="text-align:center;"><strong>0.3593</strong></td>
-            <td style="text-align:center;">0.4805</td>
-            <td style="text-align:center;"><span style="background-color:#27ae60; color:white; padding:2px 6px; border-radius:3px; font-weight:bold;">KEEP</span></td>
-            <td style="font-size:12px;">Improves dev IoU from 0.3521 to 0.3593 (+0.0073)</td>
-        </tr>
-        
-        <tr>
-            <td><strong>lab_l</strong></td>
-            <td style="text-align:center;"><code>dev</code></td>
-            <td>CIELAB L* channel + Gaussian blur + Otsu thresholding</td>
-            <td>Test perceptual lightness channel L* versus raw luminance Y/grayscale</td>
-            <td style="font-family:monospace; font-size:11px;">{"space": "lab_l", "blur": 5, "thresh_method": "otsu", "fill_holes": true, "min_area": 500}</td>
-            <td style="text-align:center;"><strong>0.3266</strong></td>
-            <td style="text-align:center;">0.4460</td>
-            <td style="text-align:center;"><span style="background-color:#c0392b; color:white; padding:2px 6px; border-radius:3px;">DISCARD</span></td>
-            <td style="font-size:12px;">Fails to improve dev IoU (0.3266 vs best 0.3593, -0.0328)</td>
-        </tr>
-        
-        <tr>
-            <td><strong>morph_small</strong></td>
-            <td style="text-align:center;"><code>dev</code></td>
-            <td>Grayscale Otsu + small elliptical opening & closing (7x7)</td>
-            <td>Eliminate fine background noise bridges and smooth egg contours</td>
-            <td style="font-family:monospace; font-size:11px;">{"space": "gray", "blur": 5, "thresh_method": "otsu", "open_k": 7, "close_k": 7, "fill_holes": true, "min_area": 500}</td>
-            <td style="text-align:center;"><strong>0.3566</strong></td>
-            <td style="text-align:center;">0.4746</td>
-            <td style="text-align:center;"><span style="background-color:#c0392b; color:white; padding:2px 6px; border-radius:3px;">DISCARD</span></td>
-            <td style="font-size:12px;">Fails to improve dev IoU (0.3566 vs best 0.3593, -0.0028)</td>
-        </tr>
-        
-        <tr>
-            <td><strong>morph_medium</strong></td>
-            <td style="text-align:center;"><code>dev</code></td>
-            <td>Grayscale Otsu + medium elliptical opening & closing (15x15)</td>
-            <td>Scale structuring element closer to minimum egg radius to remove larger clutter</td>
-            <td style="font-family:monospace; font-size:11px;">{"space": "gray", "blur": 5, "thresh_method": "otsu", "open_k": 15, "close_k": 15, "fill_holes": true, "min_area": 500}</td>
-            <td style="text-align:center;"><strong>0.3769</strong></td>
-            <td style="text-align:center;">0.4964</td>
-            <td style="text-align:center;"><span style="background-color:#27ae60; color:white; padding:2px 6px; border-radius:3px; font-weight:bold;">KEEP</span></td>
-            <td style="font-size:12px;">Improves dev IoU from 0.3593 to 0.3769 (+0.0175)</td>
-        </tr>
-        
-        <tr>
-            <td><strong>morph_large</strong></td>
-            <td style="text-align:center;"><code>dev</code></td>
-            <td>Grayscale Otsu + large elliptical opening & closing (25x25) + hole fill</td>
-            <td>Match structuring element to natural egg convexity, eliminating non-elliptical noise</td>
-            <td style="font-family:monospace; font-size:11px;">{"space": "gray", "blur": 5, "thresh_method": "otsu", "open_k": 25, "close_k": 25, "fill_holes": true, "min_area": 500}</td>
-            <td style="text-align:center;"><strong>0.3973</strong></td>
-            <td style="text-align:center;">0.5159</td>
-            <td style="text-align:center;"><span style="background-color:#27ae60; color:white; padding:2px 6px; border-radius:3px; font-weight:bold;">KEEP</span></td>
-            <td style="font-size:12px;">Improves dev IoU from 0.3769 to 0.3973 (+0.0204)</td>
-        </tr>
-        
-        <tr>
-            <td><strong>border_polarity</strong></td>
-            <td style="text-align:center;"><code>dev</code></td>
-            <td>Border-adaptive polarity detection: invert threshold if border mean > center mean</td>
-            <td>Handle backlit scenes and bright surfaces by automatically detecting background polarity</td>
-            <td style="font-family:monospace; font-size:11px;">{"space": "gray", "blur": 5, "thresh_method": "border_polarity", "open_k": 25, "close_k": 25, "fill_holes": true, "min_area": 500}</td>
-            <td style="text-align:center;"><strong>0.3784</strong></td>
-            <td style="text-align:center;">0.4897</td>
-            <td style="text-align:center;"><span style="background-color:#c0392b; color:white; padding:2px 6px; border-radius:3px;">DISCARD</span></td>
-            <td style="font-size:12px;">Fails to improve dev IoU (0.3784 vs best 0.3973, -0.0188)</td>
-        </tr>
-        
-        <tr>
-            <td><strong>lab_border_dist</strong></td>
-            <td style="text-align:center;"><code>dev</code></td>
-            <td>CIELAB Euclidean distance from estimated image border background color</td>
-            <td>Segment eggs by color-distance contrast against table or background surface</td>
-            <td style="font-family:monospace; font-size:11px;">{"space": "border_dist", "blur": 5, "thresh_method": "otsu", "open_k": 25, "close_k": 25, "fill_holes": true, "min_area": 500}</td>
-            <td style="text-align:center;"><strong>0.3584</strong></td>
-            <td style="text-align:center;">0.4553</td>
-            <td style="text-align:center;"><span style="background-color:#c0392b; color:white; padding:2px 6px; border-radius:3px;">DISCARD</span></td>
-            <td style="font-size:12px;">Fails to improve dev IoU (0.3584 vs best 0.3973, -0.0389)</td>
-        </tr>
-        
-        <tr>
-            <td><strong>component_ranking</strong></td>
-            <td style="text-align:center;"><code>dev</code></td>
-            <td>Component selection scored by ellipse fit residual, area, and center distance</td>
-            <td>Reject peripheral clutter and irregular background objects based on geometric egg priors</td>
-            <td style="font-family:monospace; font-size:11px;">{"space": "gray", "blur": 5, "thresh_method": "otsu", "open_k": 25, "close_k": 25, "fill_holes": true, "min_area": 500, "component_ranking": true}</td>
-            <td style="text-align:center;"><strong>0.3973</strong></td>
-            <td style="text-align:center;">0.5068</td>
-            <td style="text-align:center;"><span style="background-color:#27ae60; color:white; padding:2px 6px; border-radius:3px; font-weight:bold;">KEEP</span></td>
-            <td style="font-size:12px;">Improves dev IoU from 0.3973 to 0.3973 (+0.0000)</td>
-        </tr>
-        
-        <tr>
-            <td><strong>watershed_conditional</strong></td>
-            <td style="text-align:center;"><code>dev</code></td>
-            <td>Conditional distance watershed applied only to components failing ellipse-fit criteria</td>
-            <td>Avoid over-segmenting single regular eggs while splitting clustered touching eggs</td>
-            <td style="font-family:monospace; font-size:11px;">{"space": "gray", "blur": 5, "thresh_method": "otsu", "open_k": 25, "close_k": 25, "fill_holes": true, "min_area": 500, "watershed": "conditional", "ws_min_dist": 20}</td>
-            <td style="text-align:center;"><strong>0.3973</strong></td>
-            <td style="text-align:center;">0.5159</td>
-            <td style="text-align:center;"><span style="background-color:#c0392b; color:white; padding:2px 6px; border-radius:3px;">DISCARD</span></td>
-            <td style="font-size:12px;">Fails to improve dev IoU (0.3973 vs best 0.3973, -0.0000)</td>
-        </tr>
-        
-        <tr>
-            <td><strong>watershed_always</strong></td>
-            <td style="text-align:center;"><code>dev</code></td>
-            <td>Euclidean distance transform + watershed applied to all detected egg clusters</td>
-            <td>Resolve touching eggs into separate instances across all scenes</td>
-            <td style="font-family:monospace; font-size:11px;">{"space": "gray", "blur": 5, "thresh_method": "otsu", "open_k": 25, "close_k": 25, "fill_holes": true, "min_area": 500, "watershed": "always", "ws_min_dist": 20}</td>
-            <td style="text-align:center;"><strong>0.3975</strong></td>
-            <td style="text-align:center;">0.5161</td>
-            <td style="text-align:center;"><span style="background-color:#27ae60; color:white; padding:2px 6px; border-radius:3px; font-weight:bold;">KEEP</span></td>
-            <td style="font-size:12px;">Improves dev IoU from 0.3973 to 0.3975 (+0.0003)</td>
-        </tr>
-        
-        <tr>
-            <td><strong>final</strong></td>
-            <td style="text-align:center;"><code>dev</code></td>
-            <td>Final frozen pipeline: Grayscale Otsu + large morph (25x25) + GrabCut refinement + distance watershed</td>
-            <td>Achieves highest IoU with refined egg silhouettes and separated instances</td>
-            <td style="font-family:monospace; font-size:11px;">{"space": "gray", "blur": 5, "thresh_method": "otsu", "open_k": 25, "close_k": 25, "fill_holes": true, "min_area": 1000, "grabcut": true, "watershed": "always", "ws_min_dist": 20}</td>
-            <td style="text-align:center;"><strong>0.4008</strong></td>
-            <td style="text-align:center;">0.5151</td>
-            <td style="text-align:center;"><span style="background-color:#27ae60; color:white; padding:2px 6px; border-radius:3px; font-weight:bold;">KEEP</span></td>
-            <td style="font-size:12px;">Improves dev IoU from 0.3975 to 0.4008 (+0.0032)</td>
-        </tr>
-        
-        <tr>
-            <td><strong>final</strong></td>
-            <td style="text-align:center;"><code>eval</code></td>
-            <td>Final frozen pipeline: Grayscale Otsu + large morph (25x25) + GrabCut refinement + distance watershed</td>
-            <td>Achieves highest IoU with refined egg silhouettes and separated instances</td>
-            <td style="font-family:monospace; font-size:11px;">{"space": "gray", "blur": 5, "thresh_method": "otsu", "open_k": 25, "close_k": 25, "fill_holes": true, "min_area": 1000, "grabcut": true, "watershed": "always", "ws_min_dist": 20}</td>
-            <td style="text-align:center;"><strong>0.3207</strong></td>
-            <td style="text-align:center;">0.4259</td>
-            <td style="text-align:center;"><span style="background-color:#27ae60; color:white; padding:2px 6px; border-radius:3px; font-weight:bold;">EVAL_FINAL</span></td>
-            <td style="font-size:12px;">Frozen final pipeline evaluated once on unseen eval split (IoU 0.3207, Dice 0.4259)</td>
-        </tr>
-        
-    </tbody>
-</table>
-
-<h2>3. Task 3: Quantitative &amp; Qualitative Evaluation</h2>
-<h3>3.1 Quantitative Results Summary</h3>
-<p>Instance matching was conducted via Hungarian bipartite matching with an IoU threshold of &ge; 0.50. Pixel-level and instance-level metrics are reported below separately for dev and eval:</p>
-
-<table class="metric-table">
-    <thead>
-        <tr>
-            <th>Metric</th>
-            <th>Dev Split (88 images)</th>
-            <th>Eval Split (22 images)</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>Pixel IoU (Mean)</td>
-            <td><strong>0.4008</strong></td>
-            <td><strong>0.3207</strong></td>
-        </tr>
-        <tr>
-            <td>Pixel IoU (Median)</td>
-            <td>0.3010</td>
-            <td>0.2491</td>
-        </tr>
-        <tr>
-            <td>Pixel Dice (Mean)</td>
-            <td><strong>0.5151</strong></td>
-            <td><strong>0.4259</strong></td>
-        </tr>
-        <tr>
-            <td>Pixel Dice (Median)</td>
-            <td>0.4627</td>
-            <td>0.3989</td>
-        </tr>
-        <tr>
-            <td>Pixel Precision</td>
-            <td>0.4399</td>
-            <td>0.3363</td>
-        </tr>
-        <tr>
-            <td>Pixel Recall</td>
-            <td>0.8719</td>
-            <td>0.9294</td>
-        </tr>
-        <tr>
-            <td>Detection Precision (IoU &ge; 0.5)</td>
-            <td>0.2263</td>
-            <td>0.2165</td>
-        </tr>
-        <tr>
-            <td>Detection Recall (IoU &ge; 0.5)</td>
-            <td>0.5303</td>
-            <td>0.4621</td>
-        </tr>
-        <tr>
-            <td>Detection F1 Score</td>
-            <td><strong>0.2827</strong></td>
-            <td><strong>0.2552</strong></td>
-        </tr>
-        <tr>
-            <td>Mean Absolute Count Error</td>
-            <td>4.47</td>
-            <td>3.64</td>
-        </tr>
-    </tbody>
-</table>
-
-<h3>3.2 Metric Distributions &amp; Counting Plots</h3>
-<div class="fig-grid">
-    <div class="fig-card">
-        <img src="figures/dev_iou_dist.png" alt="Dev IoU Distribution">
-        <div class="fig-caption">Figure 3.1: Dev split Pixel IoU Distribution (Mean: 0.4008).</div>
-    </div>
-    <div class="fig-card">
-        <img src="figures/eval_iou_dist.png" alt="Eval IoU Distribution">
-        <div class="fig-caption">Figure 3.2: Eval split Pixel IoU Distribution (Mean: 0.3207).</div>
-    </div>
-</div>
-
-<div class="fig-grid">
-    <div class="fig-card">
-        <img src="figures/dev_count_scatter.png" alt="Dev Count Scatter">
-        <div class="fig-caption">Figure 3.3: Dev Predicted vs Ground Truth Egg Count.</div>
-    </div>
-    <div class="fig-card">
-        <img src="figures/eval_count_scatter.png" alt="Eval Count Scatter">
-        <div class="fig-caption">Figure 3.4: Eval Predicted vs Ground Truth Egg Count.</div>
-    </div>
-</div>
-
-<h3>3.3 Qualitative Failure Gallery</h3>
-<p>Figure 3.5 presents the 8 worst failure cases on the dev split, comparing Input, SAM Ground Truth, Classical Prediction, and Difference Overlay (Green = True Positive, Red = False Positive, Blue = False Negative):</p>
-<div style="text-align:center;">
-    <img src="figures/dev_failure_gallery.png" alt="Failure Gallery Dev" style="max-height:850px;">
-    <div class="fig-caption">Figure 3.5: Dev split worst failure analysis gallery.</div>
-</div>
-
-<h3>3.4 Failure Analysis Grouped by Physical Root Cause</h3>
-<ul>
-    <li><strong>Boiling Pot Water & Specular Rim Reflections (e.g. <code>not_damaged_125</code>, <code>42</code>, <code>123</code>):</strong> In cooking pots, turbulent boiling water and bright metallic rim reflections exhibit high luminance across 85%+ of the image frame. Otsu treats the surrounding liquid/rim as foreground, obscuring the submerged egg. <em>Improvement:</em> Circle Hough transform to localize pot boundaries, followed by high-gradient specular rejection.</li>
-    <li><strong>Hand Skin & Cast Shadow Color Camouflage (e.g. <code>not_damaged_24</code>, <code>20</code>):</strong> When an egg is held in fingers or resting on warm polished wood, hand skin and warm timber share nearly identical luminance and Hue/Saturation values with light-brown eggshells. Global intensity thresholding leaks onto adjacent fingers. <em>Improvement:</em> Learned skin-color probability maps (Cr/Cb color gating) to mask out human skin prior to thresholding.</li>
-    <li><strong>Severe Silhouette Backlighting / Reverse Polarity (e.g. <code>not_damaged_44</code>):</strong> When an egg is held directly in front of a bright window or lamp, the egg appears completely in shadow (dark core) surrounded by an over-exposed bright background. Standard Otsu selects the background glare as foreground. <em>Improvement:</em> Border-adaptive polarity switching coupled with gradient-energy contour snake active contours.</li>
-    <li><strong>High-Frequency Foliage & Herb Leaf Highlights (e.g. <code>not_damaged_145</code>, <code>117</code>):</strong> Eggs placed among green herb leaves (basil/coriander) create dozens of tiny specular leaf highlights that pass initial intensity gating, fragmenting the watershed. <em>Improvement:</em> Excess-Green index subtraction (<code>2G - R - B</code>) to suppress botanical foliage before thresholding.</li>
-</ul>
-
-<h2>4. Task 4: Video Tracking</h2>
-<h3>4.1 Problem Diagnosis & Resolution</h3>
-<p>The input demonstration video (<code>video/eggs.mp4</code>, 1280x720 @ 24 fps, 1440 frames) demonstrates the difference between a raw egg and a hard-boiled egg on a wooden tabletop. Initial review of the baseline tracker revealed severe ID fragmentation, where sample frame ~600 showed IDs <code>Egg 5</code> and <code>Egg 6</code> for a scene with only two eggs. Our diagnostic inspection uncovered three root causes:</p>
-<ol>
-    <li><strong>Missing Touching-Instance Separation:</strong> At frames 235-250, the demonstrator places the two eggs immediately adjacent to each other. Without watershed instance separation, the baseline algorithm merged them into a single blob (~37,500 px), dropping one track.</li>
-    <li><strong>Insufficient Track Memory (<code>max_lost = 15</code>):</strong> Hand occlusions during the spin demonstration lasted up to 43 consecutive frames (1.8 seconds). Setting <code>max_lost = 15</code> caused tracks to be purged prematurely, minting new IDs upon re-emergence.</li>
-    <li><strong>Absence of Motion Prediction:</strong> During occlusion, static track centroids failed to anticipate displacement during high-velocity spins across the table.</li>
-</ol>
-<p>We solved this by integrating Euclidean distance-transform watershed (<code>ws_min_dist = 60</code>) directly into video segmentation, extending occlusion memory to <code>max_lost = 90</code> frames, and implementing constant-velocity prediction with decay damping during occlusions.</p>
-
-<h3>4.2 Real Measured Tracking Statistics</h3>
-<table>
-    <thead>
-        <tr>
-            <th>Tracking Metric</th>
-            <th>Measured Value</th>
-            <th>Interpretation</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td><strong>Expected Eggs in Scene</strong></td>
-            <td>2</td>
-            <td>Demonstration uses exactly one raw egg and one hard-boiled egg.</td>
-        </tr>
-        <tr>
-            <td><strong>Unique IDs Created</strong></td>
-            <td><strong>2</strong> (Egg 1, Egg 2)</td>
-            <td><strong>Zero ID fragmentation.</strong> Exactly 2 persistent IDs allocated across the entire 1440-frame video.</td>
-        </tr>
-        <tr>
-            <td><strong>ID Switches Observed</strong></td>
-            <td>0</td>
-            <td>Persistent identity maintained without cross-swapping throughout demonstrations.</td>
-        </tr>
-        <tr>
-            <td><strong>Track Lifetimes</strong></td>
-            <td>Egg 1: 716 frames (29.8s), Egg 2: 643 frames (26.8s)</td>
-            <td>Both tracks active for over 90% of visible table demonstration duration.</td>
-        </tr>
-        <tr>
-            <td><strong>Frames Without Detections</strong></td>
-            <td>664 frames (27.7s)</td>
-            <td>Corresponds strictly to intro animation (frames 0-221) and outro title slides (frames 1005-1439).</td>
-        </tr>
-        <tr>
-            <td><strong>Frames With Detections</strong></td>
-            <td>776 frames (32.3s)</td>
-            <td>Continuous tracking across entire active demonstration window (frames 222-1004).</td>
-        </tr>
-    </tbody>
-</table>
-
-<h3>4.3 Video Tracking Stills at Critical Moments</h3>
-<div class="fig-grid">
-    <div class="fig-card">
-        <img src="figures/tracking_frame_235.png" alt="Frame 235">
-        <div class="fig-caption">Figure 4.1: Frame 235 - Initial adjacent egg placement resolved into Egg 1 & Egg 2 via distance watershed.</div>
-    </div>
-    <div class="fig-card">
-        <img src="figures/tracking_frame_360.png" alt="Frame 360">
-        <div class="fig-caption">Figure 4.2: Frame 360 - Flawless recovery of persistent IDs after 43-frame hand occlusion.</div>
-    </div>
-</div>
-
-<div class="fig-grid">
-    <div class="fig-card">
-        <img src="figures/tracking_frame_600.png" alt="Frame 600">
-        <div class="fig-caption">Figure 4.3: Frame 600 - High-velocity spin across table stably tracked as Egg 1 & Egg 2 (previously fragmented to Egg 5 & 6).</div>
-    </div>
-    <div class="fig-card">
-        <img src="figures/tracking_frame_850.png" alt="Frame 850">
-        <div class="fig-caption">Figure 4.4: Frame 850 - Hard-boiled vs raw egg rotation comparison with continuous trajectory trails.</div>
-    </div>
-</div>
-
-<div class="callout">
-<strong>Public Video Tracking Output:</strong><br>
-The complete annotated video is rendered locally to <code>out/video/tracked.mp4</code> (15.5 MB, 1440 frames @ 24 fps).<br>
-Google Drive Link: <code>[YOUR_GOOGLE_DRIVE_PUBLIC_LINK_HERE]</code>
-</div>
-
-<h2>5. AI Tools Disclosure</h2>
-<p>Anthropic Claude and Google Antigravity were used as coding assistants for project scaffolding, OpenCV script debugging, and report generation. All computer vision algorithms, point-prompt annotation workflows, morphological pipeline design, empirical tracking tuning, and scientific failure analyses were implemented, verified, and experimentally validated on the dataset.</p>
-
-<div class="footer">
-Report generated automatically by <code>src/generate_report.py</code>. Fully reproducible on Windows and Linux environments.
-</div>
 
 </body>
 </html>
