@@ -24,40 +24,43 @@ All numbers below were measured directly from the execution of the scripts in th
 | **Detection F1 (IoU >= 0.5)** | **0.4087** | **0.3206** | — |
 | **Count Error (Signed Mean)** | +2.20 | +1.68 | — |
 | **Count Error (Abs Mean)** | 2.20 | 1.77 | — |
+| **Split Leakage Audit** | 0 straddling groups | 0/22 affected | 109 groups (108 singletons, 1 dev pair) |
 | **Video Processing FPS** | — | — | **24.0 FPS** (1440 frames @ 1280x720) |
-| **Video Unique Tracks** | — | — | **6 unique tracks** |
+| **Video Unique Tracks** | — | — | **6 unique tracks** (5 valid if length &ge; 5) |
 | **Video Track Lifetimes** | — | — | Egg 1: 529, Egg 2: 282, Egg 3: 101, Egg 4: 269, Egg 5: 3, Egg 6: 190 |
 | **Video Loss & Recovery Events** | — | — | **18 loss events, 12 recoveries** |
+| **Detection Continuity (F#222–1004)** | — | — | **782 of 783 frames detected** (Frame 480 had 0 detections) |
 | **Hand Occlusion Fix (F#600)** | — | — | Gating reduced total mask by 2,296 px (1,304 px in crop x in [200, 460], y in [300, 430]) |
 
 ---
 
-## 2. Reproduction Commands & Real Console Outputs
+## 2. Reproduction Commands & Real Captured Console Logs
 
-The following commands reproduce the entire project from scratch. The console outputs below are verbatim recordings from runs of this repository.
+> *An earlier version of this file contained a console block that had not been captured from a real run; all console output below is copied from logs/.*
+>
+> All stages were re-run once for log capture with the exact commands from README.md. Outputs were compared against existing `experiments.csv`, `summary.json` files, `tracking_stats.json`, and `tracking_log.csv`; everything is identical. Full logs are stored in `logs/`.
 
 ### Stage 1: Perceptual Hash Dataset Split
 ```powershell
-python src/split.py --images data --out splits.json
+python src/split.py --images data --out splits.json | Tee-Object -FilePath logs/01_split.txt
 ```
 ```text
-110 images, 87 groups -> dev 88, eval 22
-group of 5: ['not_damaged_103_jpg.rf.d5d08cb5c3cf3e3878b6be8c9fb60975.jpg', 'not_damaged_106_jpg.rf.634a3170ce89e2dd4c6fe575778848ba.jpg', 'not_damaged_108_jpg.rf.de0bd2447ade8d891625ac0dd055667a.jpg', 'not_damaged_111_jpg.rf.02a0614137df124d54f59e98e4d2bf4b.jpg']
-group of 4: ['not_damaged_137_jpg.rf.fcb8e5c1d636ae4d3c35b3db54497e1f.jpg', 'not_damaged_139_jpg.rf.9f18c65b30035092401a5281a03b7124.jpg', 'not_damaged_143_jpg.rf.ddf38df15f549405285b01245a2ace36.jpg', 'not_damaged_147_jpg.rf.15fa276e0ef7cfa24fbe2a095ffbfbfe.jpg']
-group of 4: ['not_damaged_144_jpg.rf.57c2c9d2f23cfb1b6ba8ebf1f8cb5732.jpg', 'not_damaged_146_jpg.rf.65b99fc696d552e46b9ecb2d7168b4ef.jpg', 'not_damaged_148_jpg.rf.337be6c7ca3a4da1c7b80e7747e4eb1e.jpg', 'not_damaged_150_jpg.rf.4883eec179040c5f212f45ec7e248b11.jpg']
-group of 3: ['not_damaged_124_jpg.rf.931f62b8d40a093039633b898e0e9114.jpg', 'not_damaged_135_jpg.rf.a6d81ffb82470e031fb3ab469c8f0db2.jpg', 'not_damaged_145_jpg.rf.5147bfde42f30a27504377fd5ef13b05.jpg']
-group of 3: ['not_damaged_131_jpg.rf.854045f949fbbe8f94cb021a812df0f0.jpg', 'not_damaged_133_jpg.rf.a934442ef5795325ea7bfe30472e389e.jpg', 'not_damaged_136_jpg.rf.5f8cfbe5f8021c3b171f1e9b282c0fa2.jpg']
+110 images, 109 groups -> dev 88, eval 22
+
+group of 2: ['not_damaged_78_jpg.rf.d3a6e8624d192abc58ff7df9d5781bb5.jpg', 'not_damaged_27_jpg.rf.9eabbf76d6ac2d4caccb38b11e0d28ad.jpg']
 ```
+*(Full log in `logs/01_split.txt`)*
 
 ### Stage 2: Ground Truth Generation & Quality Audit (SAM on CUDA)
 ```powershell
-python src/sam_segment.py --images data --checkpoint weights/sam_vit_b_01ec64.pth --points points.json --out out/sam --contact-sheet
+python src/sam_segment.py --images data --checkpoint weights/sam_vit_b_01ec64.pth --points points.json --out out/sam --contact-sheet | Tee-Object -FilePath logs/02_sam.txt
 ```
 ```text
 PyTorch device in use: cuda
 GPU device: NVIDIA GeForce RTX 4070 Laptop GPU
 Loaded point prompts for 110 images from points.json
-[1/110] not_damaged_100_jpg.rf.762bb1e1ebbf559196b02660144f24c3.jpg: 1 egg(s) (point/box-prompt)
+[1/110] not_damaged_101_jpg.rf.479d12a2b41a5ec6d718dcdabd14b0c9.jpg: 1 egg(s) (point/box-prompt)
+[2/110] not_damaged_125_jpg.rf.b19353b1f84dcbef1ec088b850927bb3.jpg: 1 egg(s) (point/box-prompt)
 ...
 [110/110] not_damaged_99_jpg.rf.d2d2a13d789965d1d64380b2d6a59e9a.jpg: 1 egg(s) (point/box-prompt)
 
@@ -66,47 +69,51 @@ Saved 4 contact sheet(s) to out\sam
 Ground-Truth Audit: 0 suspicious mask(s) flagged.
 Written audit log to out\sam\suspicious.txt
 ```
+*(Full log in `logs/02_sam.txt`)*
 
 ### Stage 3: Parameterized Classical Tuning on Dev Split (18 Trials)
 ```powershell
-python src/classical_segment.py --run-all-dev
+python src/classical_segment.py --run-all-dev | Tee-Object -FilePath logs/03_dev_trials.txt
 ```
 ```text
 Running all 18 tuning trials on dev split (88 images)...
-[baseline               | dev ] n=88, IoU=0.3513 (med 0.2648), Dice=0.4693, DetF1=0.2071, CntErr=3.12, time=8.4s
-[otsu_inv               | dev ] n=88, IoU=0.0823 (med 0.0592), Dice=0.1424, DetF1=0.0000, CntErr=3.36, time=9.2s
-[clahe_otsu             | dev ] n=88, IoU=0.2562 (med 0.2004), Dice=0.3791, DetF1=0.0799, CntErr=8.22, time=9.7s
-[adaptive_thresh        | dev ] n=88, IoU=0.0634 (med 0.0474), Dice=0.1119, DetF1=0.0065, CntErr=12.33, time=10.2s
-[lab_l                  | dev ] n=88, IoU=0.3244 (med 0.2352), Dice=0.4437, DetF1=0.1665, CntErr=3.67, time=8.1s
-[hsv_gate               | dev ] n=88, IoU=0.3456 (med 0.2698), Dice=0.4665, DetF1=0.1587, CntErr=4.32, time=8.3s
-[morph_small            | dev ] n=88, IoU=0.3558 (med 0.2642), Dice=0.4740, DetF1=0.2161, CntErr=2.89, time=7.8s
-[morph_medium           | dev ] n=88, IoU=0.3766 (med 0.2942), Dice=0.4964, DetF1=0.2363, CntErr=2.34, time=7.9s
-[morph_large            | dev ] n=88, IoU=0.3972 (med 0.3060), Dice=0.5161, DetF1=0.2642, CntErr=1.25, time=8.0s
-[border_polarity_m0     | dev ] n=88, IoU=0.3698 (med 0.2978), Dice=0.4821, DetF1=0.2409, CntErr=1.07, time=8.2s
-[border_polarity_m15    | dev ] n=88, IoU=0.3945 (med 0.3060), Dice=0.5119, DetF1=0.2596, CntErr=1.25, time=8.1s
-[lab_border_dist        | dev ] n=88, IoU=0.3603 (med 0.3208), Dice=0.4582, DetF1=0.2673, CntErr=2.55, time=9.6s
-[area_filter_2500       | dev ] n=88, IoU=0.4018 (med 0.3147), Dice=0.5200, DetF1=0.3084, CntErr=0.45, time=7.9s
-[component_ranking_top1 | dev ] n=88, IoU=0.3746 (med 0.2994), Dice=0.4761, DetF1=0.3295, CntErr=-0.33, time=7.3s
-[component_ranking_top3 | dev ] n=88, IoU=0.3972 (med 0.3147), Dice=0.5092, DetF1=0.3133, CntErr=0.27, time=7.7s
-[grabcut_refine         | dev ] n=88, IoU=0.4038 (med 0.2981), Dice=0.5177, DetF1=0.3073, CntErr=0.38, time=66.8s
-[watershed_always       | dev ] n=88, IoU=0.4018 (med 0.3147), Dice=0.5200, DetF1=0.3537, CntErr=3.90, time=15.0s
-[watershed_conditional  | dev ] n=88, IoU=0.4018 (med 0.3147), Dice=0.5200, DetF1=0.4087, CntErr=2.20, time=15.5s
+
+[baseline               | dev ] n=88, IoU=0.3513 (med 0.2648), Dice=0.4693, DetF1=0.2071, CntErr=3.12, time=7.1s
+[otsu_inv               | dev ] n=88, IoU=0.0823 (med 0.0592), Dice=0.1424, DetF1=0.0000, CntErr=3.36, time=7.1s
+[clahe_otsu             | dev ] n=88, IoU=0.2562 (med 0.2004), Dice=0.3791, DetF1=0.0799, CntErr=8.22, time=8.3s
+[adaptive_thresh        | dev ] n=88, IoU=0.0634 (med 0.0474), Dice=0.1119, DetF1=0.0065, CntErr=12.33, time=7.4s
+[lab_l                  | dev ] n=88, IoU=0.3244 (med 0.2352), Dice=0.4437, DetF1=0.1665, CntErr=3.67, time=5.6s
+[hsv_gate               | dev ] n=88, IoU=0.3456 (med 0.2698), Dice=0.4665, DetF1=0.1587, CntErr=4.32, time=5.6s
+[morph_small            | dev ] n=88, IoU=0.3558 (med 0.2642), Dice=0.4740, DetF1=0.2161, CntErr=2.89, time=5.3s
+[morph_medium           | dev ] n=88, IoU=0.3766 (med 0.2942), Dice=0.4964, DetF1=0.2363, CntErr=2.34, time=5.2s
+[morph_large            | dev ] n=88, IoU=0.3972 (med 0.3060), Dice=0.5161, DetF1=0.2642, CntErr=1.25, time=5.7s
+[border_polarity_m0     | dev ] n=88, IoU=0.3698 (med 0.2978), Dice=0.4821, DetF1=0.2409, CntErr=1.07, time=6.9s
+[border_polarity_m15    | dev ] n=88, IoU=0.3945 (med 0.3060), Dice=0.5119, DetF1=0.2596, CntErr=1.25, time=6.7s
+[lab_border_dist        | dev ] n=88, IoU=0.3603 (med 0.3208), Dice=0.4582, DetF1=0.2673, CntErr=2.55, time=6.6s
+[area_filter_2500       | dev ] n=88, IoU=0.4018 (med 0.3147), Dice=0.5200, DetF1=0.3084, CntErr=0.45, time=5.1s
+[component_ranking_top1 | dev ] n=88, IoU=0.3746 (med 0.2994), Dice=0.4761, DetF1=0.3295, CntErr=-0.33, time=4.8s
+[component_ranking_top3 | dev ] n=88, IoU=0.3972 (med 0.3147), Dice=0.5092, DetF1=0.3133, CntErr=0.27, time=5.0s
+[grabcut_refine         | dev ] n=88, IoU=0.4038 (med 0.2981), Dice=0.5177, DetF1=0.3073, CntErr=0.38, time=44.9s
+[watershed_always       | dev ] n=88, IoU=0.4018 (med 0.3147), Dice=0.5200, DetF1=0.3537, CntErr=3.90, time=10.8s
+[watershed_conditional  | dev ] n=88, IoU=0.4018 (med 0.3147), Dice=0.5200, DetF1=0.4087, CntErr=2.20, time=10.5s
 
 All dev tuning trials completed successfully! Log written to experiments.csv
 ```
+*(Full log in `logs/03_dev_trials.txt`)*
 
 ### Stage 4: Single Evaluation on Frozen Pipeline (Eval Split)
 ```powershell
-python src/classical_segment.py --trial final --split eval
+python src/classical_segment.py --trial final --split eval | Tee-Object -FilePath logs/04_eval_final.txt
 ```
 ```text
-[final                  | eval] n=22, IoU=0.3196 (med 0.2502), Dice=0.4239, DetF1=0.3206, CntErr=1.68, time=3.6s
+[final                  | eval] n=22, IoU=0.3196 (med 0.2502), Dice=0.4239, DetF1=0.3206, CntErr=1.68, time=2.6s
 ```
+*(Full log in `logs/04_eval_final.txt`)*
 
 ### Stage 5: Quantitative Hungarian Evaluation vs Ground Truth
 ```powershell
-python src/evaluate.py --pred out/classical/final/dev/masks --gt out/sam/masks --split dev --data data
-python src/evaluate.py --pred out/classical/final/eval/masks --gt out/sam/masks --split eval --data data
+python src/evaluate.py --pred out/classical/final/dev/masks --gt out/sam/masks --split dev --data data | Tee-Object -FilePath logs/05_evaluate_dev.txt
+python src/evaluate.py --pred out/classical/final/eval/masks --gt out/sam/masks --split eval --data data | Tee-Object -FilePath logs/05_evaluate_eval.txt
 ```
 ```text
 === DEV Set Evaluation (n=88) ===
@@ -139,10 +146,11 @@ Artifacts saved for EVAL:
   Summary: out\eval\eval\summary.json
   Figures: out\eval\eval\figures and report/figures/
 ```
+*(Full logs in `logs/05_evaluate_dev.txt` and `logs/05_evaluate_eval.txt`)*
 
 ### Stage 6: Visual Failure Categorization
 ```powershell
-python src/categorize_failures.py
+python src/categorize_failures.py | Tee-Object -FilePath logs/06_categorize.txt
 ```
 ```text
 Saved 110 records to failure_tags.csv
@@ -173,10 +181,11 @@ Multiple touching eggs                            13    0.5674       3     0.488
 Foliage / herbs in background (specular highlights)      7    0.6906       1     0.9068
 -------------------------------------------------------------------------------------
 ```
+*(Full log in `logs/06_categorize.txt`)*
 
 ### Stage 7: Video Tracking on YouTube Demonstration
 ```powershell
-python src/video_track.py --video video/eggs.mp4 --out out/video
+python src/video_track.py --video video/eggs.mp4 --out out/video | Tee-Object -FilePath logs/07_video_track.txt
 ```
 ```text
 Tracking video: 1280x720 @ 24.0 fps, 1440 frames
@@ -203,9 +212,23 @@ Statistics: out\video\tracking_stats.json
   "video_fps": 24.0,
   "video_resolution": "1280x720",
   "unique_ids_created": 6,
-  "unique_id_list": [1, 2, 3, 4, 5, 6],
+  "unique_id_list": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
   "id_switches": 0,
-  "birth_frames": {"1": 222, "2": 222, "3": 546, "4": 689, "5": 800, "6": 810},
+  "birth_frames": {
+    "1": 222,
+    "2": 222,
+    "3": 546,
+    "4": 689,
+    "5": 800,
+    "6": 810
+  },
   "track_lifetimes": {
     "Egg 1": 529,
     "Egg 2": 282,
@@ -220,15 +243,16 @@ Statistics: out\video\tracking_stats.json
   "frames_with_detection": 782
 }
 ```
+*(Full log in `logs/07_video_track.txt`)*
 
 ### Stage 8: Dynamic Report Compilation
 ```powershell
-python src/generate_report.py
+python src/generate_report.py | Tee-Object -FilePath logs/08_report.txt
 ```
 ```text
 Generated Markdown report: report\report.md
 Generated HTML report: report\report.html
-Successfully compiled PDF report to C:\Users\Varun\OneDrive\Desktop\sam-egg-segmentation\report\report.pdf (8090.3 KB)
+Successfully compiled PDF report to C:\Users\Varun\OneDrive\Desktop\sam-egg-segmentation\report\report.pdf (8574.7 KB)
 
 --- Programmatic Verification of Figure Captions in PDF ---
   [FOUND] Figure 1a: Pixel IoU distribution on Dev split (n=88)....
@@ -239,12 +263,52 @@ Successfully compiled PDF report to C:\Users\Varun\OneDrive\Desktop\sam-egg-segm
   [FOUND] Figure 3b: Worst 8 failures on Eval split (Green=TP, Red=FP, Blue=FN)....
   [FOUND] Figure 4: Best 8 successes on Dev split showing clean elliptical masks matc...
   [FOUND] Figure 5: Random 8 representative cases illustrating typical operational pe...
-  [FOUND] Figure 6: Frame 600 before/after comparison (crop: x in [200, 460], y in [3...
-  [FOUND] Figure 7: Video Tracking Events Sheet across 14 key video frames documentin...
+  [FOUND] Figure 6: Eval split hand-held egg failure overlays (n=5). Left: Original i...
+  [FOUND] Figure 7: Frame 600 before/after comparison (crop: x in [200, 460], y in [3...
+  [FOUND] Figure 8: Video Tracking Events Sheet across 14 key video frames documentin...
 -----------------------------------------------------------
 
-Verification SUCCESS: All 10 figure captions appear in the compiled PDF text!
+Verification SUCCESS: All 11 figure captions appear in the compiled PDF text!
 ```
+*(Full log in `logs/08_report.txt`)*
+
+### Stage 9: Split Integrity & Leakage Audit
+```powershell
+python src/check_split_leakage.py | Tee-Object -FilePath logs/09_split_leakage.txt
+```
+```text
+Loaded 110 dataset images from data
+Computed 109 transitive groups from 110 images (phash <= 8 or same source name)
+Read splits.json: dev=88, eval=22
+
+====================================================================================================
+SPLIT LEAKAGE AUDIT REPORT
+====================================================================================================
+Total Images:             110
+Total Perceptual Groups:  109
+Singleton Groups:         108
+Non-Singleton Groups:     1 (group of 2 images: not_damaged_78 and not_damaged_27)
+
+Audit Result:
+  Straddling Groups (spanning dev and eval): 0
+  Eval Images in Straddling Groups:          0 / 22 (0.0%)
+
+----------------------------------------------------------------------------------------------------
+Group Details:
+  Group #49: 2 images -> ['train/egg/not_damaged_78_jpg.rf.d3a6e8624d192abc58ff7df9d5781bb5.jpg', 'train/egg/not_damaged_27_jpg.rf.9eabbf76d6ac2d4caccb38b11e0d28ad.jpg']
+    Placed in: {'dev'}  (clean dev-only group)
+----------------------------------------------------------------------------------------------------
+
+Evaluation Metrics Comparison:
+----------------------------------------------------------------------------------------------------
+Subset                                N   Pixel IoU   Pixel Dice   Detection F1
+----------------------------------------------------------------------------------------------------
+Full Eval Split                      22      0.3196       0.4239         0.3206
+Leak-Free Eval Subset                22      0.3196       0.4239         0.3206
+----------------------------------------------------------------------------------------------------
+Conclusion: ZERO split leakage detected. Eval metrics are completely uncompromised.
+```
+*(Full log in `logs/09_split_leakage.txt`)*
 
 ---
 
@@ -252,10 +316,13 @@ Verification SUCCESS: All 10 figure captions appear in the compiled PDF text!
 
 | Deliverable | File Path | Description |
 |:---|:---|:---|
-| **Report PDF** | `report/report.pdf` | Formatted multi-page PDF report with embedded figures and tables (7.90 MB). |
+| **Report PDF** | `report/report.pdf` | Formatted multi-page PDF report with embedded figures and tables (8.37 MB). |
 | **Report HTML** | `report/report.html` | Standalone HTML report viewable in any browser. |
 | **Report Markdown** | `report/report.md` | Standard GitHub Flavored Markdown report. |
-| **Figures** | `report/figures/` | All plots, failure/success galleries, frame 600 comparison, and contact sheets. |
+| **Captured Logs** | `logs/*.txt` | All 10 real captured execution logs (01 through 09). |
+| **Split Leakage Audit**| `out/eval/split_leakage_audit.txt` | Complete audit report verifying 0 straddling groups and identical leak-free metrics. |
+| **Eval Hand Skin Audit**| `out/eval/hand_130_skin_fraction.json` | Quantitative false-positive skin fractions across all 5 eval hand images (92.02% for image 130). |
+| **Figures** | `report/figures/` | All plots, failure/success galleries, frame 600 comparison, eval hand overlays, and contact sheets. |
 | **Experiment Log** | `experiments.csv` | Full table of 18 dev trials + 1 eval row with parent relationships, IoU, Dice, F1, CntErr, decision, reason. |
 | **Failure Categories** | `failure_tags.csv` | Image-by-image physical failure classification (white trays, boiling pots, hands, etc.). |
 | **Evaluation Summaries** | `out/eval/dev/summary.json`, `out/eval/eval/summary.json` | Complete machine-readable metrics for both splits. |
@@ -283,7 +350,7 @@ Verification SUCCESS: All 10 figure captions appear in the compiled PDF text!
 **Physical Mechanism:**  
 Classical algorithms (Otsu, adaptive Gaussian, CLAHE) rely on sharp photometric discontinuities (intensity or chromatic gradients) at object boundaries.
 1. **White egg on white tray / fridge (Mean IoU = 0.1274, lowest of all):**  
-   The chromatic and luminance contrast between an unblemished white eggshell and a white polystyrene tray or white refrigerator interior is essentially zero (Delta L* about 0 to 5). Because Otsu selects a global threshold based on the dominant bimodal valley of the entire frame, the entire white tray surface is lumped into the foreground with the egg.
+   The chromatic and luminance contrast between an unblemished white eggshell and a white polystyrene tray or white refrigerator interior is essentially zero ($\Delta L^* \approx 0\text{--}5$). Because Otsu selects a global threshold based on the dominant bimodal valley of the entire frame, the entire white tray surface is lumped into the foreground with the egg.
 2. **Egg submerged in boiling water (Mean IoU = 0.1731):**  
    Liquid refraction, violent bubble cavitation, and dark metallic pot rims create chaotic specular highlights. The threshold leaks across the water surface, segmenting the liquid boundary rather than the submerged shell.
 3. **Contrast with Herbs / Foliage (Mean IoU = 0.7177):**  
@@ -321,33 +388,3 @@ Reviewers appreciate transparency. Here is what was NOT done or where shortcuts 
 4. **Domain-Specific Table ROI:** In `src/video_track.py`, the region y < 270 (demonstrator's plaid shirt) and the bottom-right corner (x > 1040, y > 600, channel logo watermark) were masked using static coordinate bounds. In a production system, a table/surface detector or YOLO person detector should be used to establish dynamic ROIs.
 5. **Re-Identification Across Removals:** Smooth, textureless white eggs have near-identical visual appearance. When eggs are removed from view and placed back onto the table, identity assignment cannot be established with physical certainty under classical re-ID methods.
 6. **Slim Review Package Omissions:** The slim archive (`sam-egg-segmentation-slim.zip`, <25 MB) leaves out the raw dataset images (`data/`), all visual overlay folders (`*/overlays`), contact sheet images, video files (`*.mp4`), intermediate classical trial masks, SAM model weights (`weights/`), and virtual environment (`.venv/`).
-
----
-
-## 6. What Changed in This Round
-
-1. **Report Parity & Programmatic Verification:**
-   - Unified `src/generate_report.py` to generate `report.md`, `report.html`, and `report.pdf` from the exact same data structures, eliminating all content and caption discrepancies.
-   - Added programmatic verification via `fitz` (PyMuPDF) confirming that all 10 figure captions (Figures 1a, 1b, 2a, 2b, 3a, 3b, 4, 5, 6, 7) are present in the compiled PDF text.
-2. **Watershed Description Correction:**
-   - Rewrote the watershed progression description from `experiments.csv`: "Detection F1 rose from 0.3084 to 0.4087, mean signed count error rose from +0.45 to +2.20 (over-splitting), pixel IoU unchanged."
-3. **Track Timeline & Analysis Consistency:**
-   - Rebuilt `out/video/track_timeline.json` from full per-frame tracker state with exact birth frames, last matched frames, matched frame counts, gap intervals, and verified still references.
-   - Extracted 14 full-frame annotated event stills (track births, deaths, and frames 798, 800, 802, 806, 810, 814 for Track 5) and built `report/figures/tracking_events_sheet.jpg`.
-   - Clarified physical egg identities so no two simultaneously active tracks share descriptions (Track 1 = middle-right egg; Track 4 = left egg re-placed at frame 689).
-   - Documented Track 5 analysis: transient rotational motion-blur fragment of spinning raw egg at frame 800-810 that briefly coexists with Track 6 at frame 810 before consolidating.
-4. **Skin Gating Numbers & Fingertip Crop:**
-   - Updated wording: "gating reduced the total foreground mask by 2296 px over the whole frame; the fingertip bulge is visible in Figure 6".
-   - Computed and recorded crop difference ($x \in [200, 460], y \in [300, 430]$): 1,304 px reduced.
-   - Saved full-frame and crop numbers to `out/video/frame_600_skin_diff.json`.
-   - Mentioned the small residual ring on the fingernail in Figure 6.
-5. **Real Console Outputs in HANDOFF.md:**
-   - Replaced paraphrased output lines with actual verbatim console recordings from pipeline runs.
-6. **Eval Gap Detailed Breakdown:**
-   - Added an image-by-image breakdown of the 5 eval hand images (`not_damaged_108, 127, 152, 151, 130`) explaining how pale skin and bright illumination caused Otsu flooding (mean IoU 0.1502).
-   - Softened "cannot be attributed to a single cause" to explain that severe hand failures and lower tabletop contrast drive the gap in observed data alongside small-sample variance.
-7. **Boiling-Pot Before/After Audit:**
-   - Generated `out/sam/gt_fix_audit.json` by re-running SAM with point-only vs box prompts for `not_damaged_124, 135, 145`, demonstrating area reduction from 62-82% down to 13-14% (0 border contacts).
-8. **Archive Repackaging:**
-   - Quantized gallery PNGs to 256 colors ($\le 1.5$ MB each), allowing all report figures to fit within the slim archive while reducing PDF size from 15.3 MB to 7.9 MB.
-   - Rebuilt `sam-egg-segmentation-slim.zip` (18.6 MB, well under 25 MB).
