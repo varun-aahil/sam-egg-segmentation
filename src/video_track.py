@@ -1,13 +1,16 @@
 """Video egg tracking: segment each frame and track eggs with persistent IDs.
 
 Uses Hungarian assignment on IoU + distance with constant-velocity prediction.
-Outputs an annotated MP4 with persistent egg IDs, contours, and trajectory trails.
+Outputs an annotated MP4 with persistent egg IDs, contours, trajectory trails,
+tracking logs (out/video/tracking_log.csv), and event contact sheet.
 
 Usage:
   python src/video_track.py --video video/eggs.mp4 --out out/video
 """
 import argparse
+import csv
 import json
+import math
 from pathlib import Path
 
 import cv2
@@ -20,30 +23,28 @@ from skimage.segmentation import watershed
 
 def segment_video_frame(bgr, table_y_min=270, logo_x_min=1040, logo_y_min=600,
                         s_max=70, v_min=175, ws_min_dist=60):
-    """Segment white eggs on the table in video frames.
-    
-    Adjustments made for video domain:
-    1. Region of interest: table area (y >= 270) excluding upper shirt pattern.
-    2. Logo masking: bottom-right Mocomi watermark excluded.
-    3. Illumination gating: pure white eggshells have high value (V > 175) and
-       low saturation (S < 70), cleanly separating from wooden table and hand skin.
-    4. Morphology: opening (5x5) removes thin noise, closing (11x11) bridges motion blur.
-    5. Distance transform watershed (ws_min_dist=60): separates touching eggs when
-       placed close together on the table into distinct instances.
-    """
+    """Segment white eggs on the table in video frames with skin-gating and morphology."""
     h, w = bgr.shape[:2]
     hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
     s = hsv[:, :, 1]
     v = hsv[:, :, 2]
     mask = ((s < s_max) & (v > v_min)).astype(np.uint8) * 255
 
-    # Domain ROI constraints
+    # Domain constraints
     mask[:table_y_min, :] = 0
     mask[logo_y_min:, logo_x_min:] = 0
 
-    k_open = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    # Human skin exclusion in YCrCb (eliminates hand and fingertip leakage at frame 600)
+    ycrcb = cv2.cvtColor(bgr, cv2.COLOR_BGR2YCrCb)
+    cr = ycrcb[:, :, 1]
+    cb = ycrcb[:, :, 2]
+    is_skin = (cr >= 135) & (cr <= 175) & (cb >= 80) & (cb <= 125)
+    mask[is_skin] = 0
+
+    # Morphology: opening severs narrow fingertip bridges; closing bridges motion blur
+    k_open = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, k_open)
-    k_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
+    k_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, k_close)
     mask = ndimage.binary_fill_holes(mask).astype(np.uint8)
 
@@ -65,8 +66,7 @@ def segment_video_frame(bgr, table_y_min=270, logo_x_min=1040, logo_y_min=600,
             continue
         comp = (labels == i).astype(np.uint8)
         area = int(np.sum(comp))
-        # Valid egg size bounds at 1280x720
-        if area < 3000 or area > 60000:
+        if area < 3000 or area > 70000:
             continue
         cnts, _ = cv2.findContours(comp, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not cnts:
@@ -77,7 +77,6 @@ def segment_video_frame(bgr, table_y_min=270, logo_x_min=1040, logo_y_min=600,
         if hull_area == 0:
             continue
         solidity = area / hull_area
-        # Eggs have high convexity (solidity >= 0.78)
         if solidity < 0.78:
             continue
         out[comp > 0] = next_id
@@ -87,17 +86,20 @@ def segment_video_frame(bgr, table_y_min=270, logo_x_min=1040, logo_y_min=600,
 
 
 class PersistentEggTracker:
-    """Multi-object tracker with constant-velocity prediction and persistent IDs."""
-
-    def __init__(self, max_lost=90, max_expected_eggs=2):
+    def __init__(self, max_lost=90, max_reid_dist=150.0):
         self.next_id = 1
         self.tracks = {}  # tid -> dict
         self.max_lost = max_lost
-        self.max_expected_eggs = max_expected_eggs
+        self.max_reid_dist = max_reid_dist
         self.unique_ids = set()
         self.lifetimes = {}
         self.total_frames = 0
         self.frames_detected = 0
+        self.id_switches = 0
+        self.birth_frames = {}
+        self.loss_events = []
+        self.recovery_events = []
+        self.prev_active_positions = {}  # tid -> (cx, cy) from previous frame
 
     def _centroid_and_bbox(self, mask):
         ys, xs = np.where(mask)
@@ -111,12 +113,11 @@ class PersistentEggTracker:
         return (cx, cy), (x0, y0, w, h)
 
     def _iou(self, m1, m2):
-        inter = (m1 & m2).sum()
-        union = (m1 | m2).sum()
+        inter = int((m1 & m2).sum())
+        union = int((m1 | m2).sum())
         return float(inter) / float(union) if union > 0 else 0.0
 
     def predict(self):
-        """Constant-velocity prediction during short occlusions."""
         for tid, t in self.tracks.items():
             if t["lost"] > 0:
                 vx, vy = t.get("velocity", (0.0, 0.0))
@@ -125,8 +126,7 @@ class PersistentEggTracker:
             else:
                 t["pred_centroid"] = t["centroid"]
 
-    def update(self, labels):
-        """Update tracker state with detections from the current frame."""
+    def update(self, labels, frame_idx):
         self.total_frames += 1
         self.predict()
 
@@ -135,11 +135,13 @@ class PersistentEggTracker:
         for did in det_ids:
             mask = labels == did
             centroid, bbox = self._centroid_and_bbox(mask)
+            area = int(np.sum(mask))
             detections.append({
                 "det_id": did,
                 "mask": mask,
                 "centroid": centroid,
-                "bbox": bbox
+                "bbox": bbox,
+                "area": area,
             })
 
         if detections:
@@ -147,6 +149,10 @@ class PersistentEggTracker:
 
         assignment = {}
         track_ids = list(self.tracks.keys())
+
+        # Step 1: Hungarian matching between all existing tracks and new detections
+        matched_tracks = set()
+        matched_dets = set()
 
         if track_ids and detections:
             cost = np.zeros((len(track_ids), len(detections)), dtype=np.float32)
@@ -156,20 +162,36 @@ class PersistentEggTracker:
                 tcx, tcy = t["pred_centroid"]
                 for j, d in enumerate(detections):
                     dcx, dcy = d["centroid"]
-                    dist = np.hypot(tcx - dcx, tcy - dcy)
+                    dist = float(np.hypot(tcx - dcx, tcy - dcy))
                     iou = self._iou(t["mask"], d["mask"])
+                    # Combined cost: 30% IoU + 70% normalized distance
                     cost[i, j] = 0.3 * (1.0 - iou) + 0.7 * (dist / 1280.0)
 
             row_ind, col_ind = linear_sum_assignment(cost)
-            matched_tracks = set()
-            matched_dets = set()
 
             for r, c in zip(row_ind, col_ind):
-                if cost[r, c] < 0.70 or (len(self.tracks) == self.max_expected_eggs and cost[r, c] < 0.95):
-                    tid = track_ids[r]
-                    d = detections[c]
+                tid = track_ids[r]
+                d = detections[c]
+                tcx, tcy = self.tracks[tid]["pred_centroid"]
+                dist = float(np.hypot(tcx - d["centroid"][0], tcy - d["centroid"][1]))
+
+                # Gating threshold: accept match if cost < 0.75 and distance < max_reid_dist
+                if cost[r, c] < 0.75 and dist < self.max_reid_dist:
                     assignment[d["det_id"]] = tid
-                    
+
+                    # Check for identity switch: did another previously active track have closer prior position?
+                    if len(self.prev_active_positions) >= 2 and tid in self.prev_active_positions:
+                        for other_tid, other_pos in self.prev_active_positions.items():
+                            if other_tid != tid:
+                                dist_to_assigned = dist
+                                dist_to_other = float(np.hypot(other_pos[0] - d["centroid"][0], other_pos[1] - d["centroid"][1]))
+                                if dist_to_other + 40.0 < dist_to_assigned:
+                                    self.id_switches += 1
+
+                    was_lost = self.tracks[tid]["lost"] > 0
+                    if was_lost:
+                        self.recovery_events.append((frame_idx, tid, d["centroid"]))
+
                     old_c = self.tracks[tid]["centroid"]
                     new_c = d["centroid"]
                     dt = max(1, self.tracks[tid]["lost"] + 1)
@@ -187,6 +209,7 @@ class PersistentEggTracker:
                     self.tracks[tid]["mask"] = d["mask"]
                     self.tracks[tid]["centroid"] = new_c
                     self.tracks[tid]["bbox"] = d["bbox"]
+                    self.tracks[tid]["area"] = d["area"]
                     self.tracks[tid]["velocity"] = (vx, vy)
                     self.tracks[tid]["lost"] = 0
                     self.tracks[tid]["history"] = hist
@@ -195,63 +218,51 @@ class PersistentEggTracker:
                     matched_tracks.add(tid)
                     matched_dets.add(c)
 
-            for tid in track_ids:
-                if tid not in matched_tracks:
-                    self.tracks[tid]["lost"] += 1
+        # Step 2: Update lost status for unmatched tracks
+        for tid in track_ids:
+            if tid not in matched_tracks:
+                if self.tracks[tid]["lost"] == 0:
+                    self.loss_events.append((frame_idx, tid, self.tracks[tid]["centroid"]))
+                self.tracks[tid]["lost"] += 1
 
-            for j, d in enumerate(detections):
-                if j not in matched_dets:
-                    unmatched_lost = [tid for tid in track_ids if tid not in matched_tracks]
-                    if unmatched_lost and len(self.tracks) >= self.max_expected_eggs:
-                        tid = unmatched_lost[0]
-                        assignment[d["det_id"]] = tid
-                        self.tracks[tid]["mask"] = d["mask"]
-                        self.tracks[tid]["centroid"] = d["centroid"]
-                        self.tracks[tid]["bbox"] = d["bbox"]
-                        self.tracks[tid]["lost"] = 0
-                        self.lifetimes[tid] = self.lifetimes.get(tid, 0) + 1
-                    elif len(self.tracks) < self.max_expected_eggs:
-                        tid = self.next_id
-                        self.next_id += 1
-                        self.unique_ids.add(tid)
-                        assignment[d["det_id"]] = tid
-                        self.tracks[tid] = {
-                            "mask": d["mask"],
-                            "centroid": d["centroid"],
-                            "bbox": d["bbox"],
-                            "velocity": (0.0, 0.0),
-                            "lost": 0,
-                            "history": [d["centroid"]],
-                        }
-                        self.lifetimes[tid] = 1
+        # Remove dead tracks exceeding max_lost
+        dead_tracks = [tid for tid, t in self.tracks.items() if t["lost"] > self.max_lost]
+        for tid in dead_tracks:
+            del self.tracks[tid]
 
-        elif detections:
-            for d in detections:
-                if len(self.tracks) < self.max_expected_eggs:
-                    tid = self.next_id
-                    self.next_id += 1
-                    self.unique_ids.add(tid)
-                    assignment[d["det_id"]] = tid
-                    self.tracks[tid] = {
-                        "mask": d["mask"],
-                        "centroid": d["centroid"],
-                        "bbox": d["bbox"],
-                        "velocity": (0.0, 0.0),
-                        "lost": 0,
-                        "history": [d["centroid"]],
-                    }
-                    self.lifetimes[tid] = 1
+        # Step 3: Unmatched detections create new tracks
+        for j, d in enumerate(detections):
+            if j not in matched_dets:
+                tid = self.next_id
+                self.next_id += 1
+                self.unique_ids.add(tid)
+                self.birth_frames[tid] = frame_idx
+                assignment[d["det_id"]] = tid
+                self.tracks[tid] = {
+                    "mask": d["mask"],
+                    "centroid": d["centroid"],
+                    "bbox": d["bbox"],
+                    "area": d["area"],
+                    "velocity": (0.0, 0.0),
+                    "lost": 0,
+                    "history": [d["centroid"]],
+                }
+                self.lifetimes[tid] = 1
+
+        # Record active positions for next frame switch detection
+        self.prev_active_positions = {
+            tid: self.tracks[tid]["centroid"] for tid in self.tracks if self.tracks[tid]["lost"] == 0
+        }
 
         return assignment
 
 
 def draw_tracked_frame(bgr, labels, assignment, tracker):
-    """Render egg contours, IDs, and trajectory trails onto frame."""
     out = bgr.copy()
     palette = [
         (46, 204, 113),   # Green (Egg 1)
         (52, 152, 219),   # Blue (Egg 2)
-        (155, 89, 182),   # Purple
+        (155, 89, 182),   # Purple (Egg 3)
         (241, 196, 15),   # Yellow
     ]
 
@@ -279,13 +290,37 @@ def draw_tracked_frame(bgr, labels, assignment, tracker):
     return out
 
 
+def build_tracking_contact_sheet(captured_frames, out_path, grid=(4, 4), thumb_size=(320, 180)):
+    n_tiles = min(len(captured_frames), grid[0] * grid[1])
+    cols, rows = grid
+    sheet = np.zeros((rows * thumb_size[1], cols * thumb_size[0], 3), dtype=np.uint8)
+
+    for idx in range(n_tiles):
+        fidx, frame, desc = captured_frames[idx]
+        thumb = cv2.resize(frame, thumb_size, interpolation=cv2.INTER_AREA)
+        # Overlay frame index and description badge
+        cv2.rectangle(thumb, (0, 0), (thumb_size[0], 24), (0, 0, 0), -1)
+        tag = f"F#{fidx}: {desc}"
+        cv2.putText(thumb, tag[:36], (6, 17), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1)
+
+        r = idx // cols
+        c = idx % cols
+        y0, y1 = r * thumb_size[1], (r + 1) * thumb_size[1]
+        x0, x1 = c * thumb_size[0], (c + 1) * thumb_size[0]
+        sheet[y0:y1, x0:x1] = thumb
+
+    cv2.imwrite(str(out_path), sheet)
+    print(f"Saved tracking contact sheet to {out_path}")
+
+
 def main():
     ap = argparse.ArgumentParser(description="Video egg tracking pipeline.")
     ap.add_argument("--video", default="video/eggs.mp4", help="Input video path")
     ap.add_argument("--out", default="out/video", help="Output directory")
-    ap.add_argument("--figures-out", default="report/figures", help="Figures output directory for report")
+    ap.add_argument("--figures-out", default="report/figures", help="Figures directory for report")
     ap.add_argument("--max-frames", type=int, default=0, help="0 = all frames")
-    ap.add_argument("--fps", type=int, default=0, help="Target FPS (0 = source fps)")
+    ap.add_argument("--max-reid-dist", type=float, default=150.0, help="Max distance for re-identifying lost tracks")
+    ap.add_argument("--max-lost", type=int, default=90, help="Max lost frames before track deletion")
     args = ap.parse_args()
 
     cap = cv2.VideoCapture(str(args.video))
@@ -295,9 +330,8 @@ def main():
     in_fps = cap.get(cv2.CAP_PROP_FPS) or 24.0
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    total_video_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    out_fps = args.fps if args.fps > 0 else in_fps
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     figures_dir = Path(args.figures_out)
@@ -305,20 +339,31 @@ def main():
 
     out_path = out_dir / "tracked.mp4"
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    writer = cv2.VideoWriter(str(out_path), fourcc, out_fps, (width, height))
+    writer = cv2.VideoWriter(str(out_path), fourcc, in_fps, (width, height))
 
-    tracker = PersistentEggTracker(max_lost=90, max_expected_eggs=2)
+    tracker = PersistentEggTracker(max_lost=args.max_lost, max_reid_dist=args.max_reid_dist)
     frame_idx = 0
-    max_frames = args.max_frames if args.max_frames > 0 else total
+    max_frames = args.max_frames if args.max_frames > 0 else total_video_frames
+
+    # Contact sheet sampling plan: key events + evenly spaced frames
+    target_contact_frames = set(range(0, max_frames, max_frames // 12))
+    target_contact_frames.update([235, 245, 360, 600, 750, 850])
+    captured_frames = []
+
+    # CSV log file setup
+    log_csv_path = out_dir / "tracking_log.csv"
+    log_file = open(log_csv_path, "w", newline="", encoding="utf-8")
+    log_writer = csv.writer(log_file)
+    log_writer.writerow(["frame", "track_id", "x", "y", "area", "vx", "vy", "state"])
 
     key_stills = {
-        235: "tracking_frame_235.png",  # Initial adjacent placement resolved by watershed
-        360: "tracking_frame_360.png",  # Recovery after demonstrator hand occlusion
-        600: "tracking_frame_600.png",  # Raw egg spin across table preserved as Egg 1 & Egg 2
-        850: "tracking_frame_850.png",  # Rotation comparison with continuous trajectories
+        235: "tracking_frame_235.png",
+        360: "tracking_frame_360.png",
+        600: "tracking_frame_600.png",
+        850: "tracking_frame_850.png",
     }
 
-    print(f"Tracking video: {width}x{height} @ {in_fps:.1f} fps, {total} frames")
+    print(f"Tracking video: {width}x{height} @ {in_fps:.1f} fps, {total_video_frames} frames")
     print(f"Rendering annotated video to {out_path}...")
 
     while True:
@@ -327,31 +372,64 @@ def main():
             break
 
         labels = segment_video_frame(frame)
-        assignment = tracker.update(labels)
+        assignment = tracker.update(labels, frame_idx)
         annotated = draw_tracked_frame(frame, labels, assignment, tracker)
 
         writer.write(annotated)
 
+        # Log active and lost tracks every 10th frame
+        if frame_idx % 10 == 0:
+            for tid, t in tracker.tracks.items():
+                cx, cy = t["centroid"]
+                vx, vy = t.get("velocity", (0.0, 0.0))
+                area = t.get("area", 0)
+                state = "active" if t["lost"] == 0 else "lost"
+                log_writer.writerow([frame_idx, tid, f"{cx:.1f}", f"{cy:.1f}", area, f"{vx:.2f}", f"{vy:.2f}", state])
+
+        # Capture key stills
         if frame_idx in key_stills:
             cv2.imwrite(str(figures_dir / key_stills[frame_idx]), annotated)
-            print(f"  Saved key figure frame {frame_idx} to {figures_dir / key_stills[frame_idx]}")
+            cv2.imwrite(str(out_dir / key_stills[frame_idx]), annotated)
+
+        # Capture frames for contact sheet
+        if frame_idx in target_contact_frames:
+            desc = "Intro (No eggs)" if len(tracker.unique_ids) == 0 else f"{len(assignment)} eggs tracked"
+            if frame_idx == 600:
+                desc = "Hand near egg (skin gated)"
+            elif frame_idx in [235, 245]:
+                desc = "Adjacent placement resolved"
+            captured_frames.append((frame_idx, annotated.copy(), desc))
 
         if frame_idx % 150 == 0:
-            print(f"  Frame {frame_idx}/{max_frames}: active tracks = {list(tracker.tracks.keys())}")
+            active_tids = [tid for tid in tracker.tracks if tracker.tracks[tid]["lost"] == 0]
+            print(f"  Frame {frame_idx}/{max_frames}: active tracks = {active_tids}, unique IDs so far = {len(tracker.unique_ids)}")
 
         frame_idx += 1
 
     cap.release()
     writer.release()
+    log_file.close()
 
-    # Save tracking statistics
+    # Build and save 16-frame contact sheet
+    captured_frames.sort(key=lambda x: x[0])
+    contact_sheet_path = out_dir / "tracking_contact_sheet.jpg"
+    build_tracking_contact_sheet(captured_frames[:16], contact_sheet_path, grid=(4, 4), thumb_size=(320, 180))
+    import shutil
+    shutil.copy(contact_sheet_path, figures_dir / "tracking_contact_sheet.jpg")
+
+    # Compute and save tracking statistics dynamically
     stats = {
-        "total_frames": tracker.total_frames,
-        "expected_eggs": tracker.max_expected_eggs,
+        "total_video_frames": total_video_frames,
+        "processed_frames": frame_idx,
+        "video_fps": float(in_fps),
+        "video_resolution": f"{width}x{height}",
         "unique_ids_created": len(tracker.unique_ids),
         "unique_id_list": sorted(list(tracker.unique_ids)),
-        "id_switches": 0,
+        "id_switches": tracker.id_switches,
+        "birth_frames": tracker.birth_frames,
         "track_lifetimes": {f"Egg {k}": v for k, v in tracker.lifetimes.items()},
+        "total_loss_events": len(tracker.loss_events),
+        "total_recovery_events": len(tracker.recovery_events),
         "frames_without_detection": tracker.total_frames - tracker.frames_detected,
         "frames_with_detection": tracker.frames_detected,
     }
@@ -359,7 +437,9 @@ def main():
     stats_path.write_text(json.dumps(stats, indent=2))
 
     print(f"\nTracking complete: {frame_idx} frames rendered to {out_path}")
-    print(f"Statistics written to {stats_path}")
+    print(f"Tracking log: {log_csv_path}")
+    print(f"Contact sheet: {contact_sheet_path}")
+    print(f"Statistics: {stats_path}")
     print(json.dumps(stats, indent=2))
 
 
