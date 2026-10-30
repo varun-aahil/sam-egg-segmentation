@@ -42,6 +42,9 @@ pip install -r requirements.txt
 Splits near-duplicate images into 4:1 disjoint clusters (88 dev, 22 eval) using perceptual hashing (`splits.json` uses POSIX forward slashes for cross-platform compatibility):
 ```bash
 python src/split.py --images data --out splits.json
+
+# Audit split integrity and check for any data leakage
+python src/check_split_leakage.py
 ```
 
 ### Task 1: SAM Segmentation via Point & Box Prompts (Ground Truth)
