@@ -16,7 +16,7 @@ This report presents an end-to-end computer vision solution for egg segmentation
 - **Ground Truth Integrity:** 110 clean SAM masks generated via `SamPredictor` (`vit_b` on CUDA) using human point prompts and tight bounding boxes for boiling water edge cases. 0 flagged suspicious masks remaining.
 - **Classical Pipeline (Dev Split, n=88):** Pixel Mean IoU = **0.4018** (95% CI: [0.3435, 0.4603], Median = 0.3147), Dice = **0.5200**, Detection F1 = **0.4087**, Mean Count Error = **2.20**.
 - **Classical Pipeline (Eval Split, n=22):** Pixel Mean IoU = **0.3196** (95% CI: [0.1978, 0.4268], Median = 0.2502), Dice = **0.4239**, Detection F1 = **0.3206**, Mean Count Error = **1.68**.
-- **Video Tracking (1440 frames):** 1440 frames processed at 24.0 FPS. **2 unique tracks** created across the video (1:1 mapping with the 2 real physical eggs), with **15 loss events** and **15 recoveries**. At least one egg was detected in 782 of the 783 active demonstration frames (frame 480 had 0 detections). Hand occlusion and fingertip leakage at frame 600 resolved using YCrCb skin gating and morphological opening (gating reduced the total foreground mask by 2296 px over the whole frame; restricted to crop x in [200, 460], y in [300, 430], the mask was reduced by 1304 px). Zero ID switches were verified against manual ground-truth physical egg mapping.
+- **Video Tracking (1440 frames):** 1440 frames processed at 24.0 FPS. **2 unique tracks** created across the video (1:1 mapping with the 2 real physical eggs), with **15 loss events** and **15 recoveries**. At least one egg was detected in 782 of the 783 active demonstration frames (frame 480 had 0 detections). Hand occlusion and fingertip leakage at frame 600 resolved using YCrCb skin gating and morphological opening (gating reduced the total foreground mask by 2296 px over the whole frame; restricted to crop x in [200, 460], y in [300, 430], the mask was reduced by 1304 px). Identities were checked by hand on the 14 frames of the events sheet and the timeline, and no swap was seen; the tracker's internal id_switches heuristic counter was 0.
 
 ---
 
@@ -230,8 +230,8 @@ Scene category tags were assigned by systematic review of the category contact s
 3. **Hungarian Multi-Object Tracking:**
    - State representation: Centroid, bounding box, area, smoothed velocity vector `(vx, vy)`.
    - Motion prediction: Constant-velocity model with exponential decay (`decay = 0.90^lost`).
-   - Cost Matrix: 30% mask IoU + 70% normalized Euclidean centroid distance.
-   - Gating & ID Integrity: Distance threshold of 150 px. Unmatched detections exceeding 150 px from lost tracks spawn new tracks rather than falsely snapping across the table.
+   - Cost Matrix: For active tracks (`lost = 0`), 30% mask IoU + 70% normalized Euclidean centroid distance. For lost tracks, normalized spatial distance plus area discrepancy penalty: `cost = 0.5 * (dist / reid_radius) + 0.5 * (1.0 - area_ratio)`.
+   - Gating & ID Integrity: Active track distance threshold of base 150 px. For lost tracks, the allowable re-ID radius starts at base 150 px and grows by 20 px per lost frame, capped at 900 px; lost tracks are retained in memory up to 300 frames (12.5 seconds).
 
 ### Frame 600 Fingertip Fix Comparison
 ![Frame 600 Comparison](figures/frame_600_comparison.png)  
@@ -240,9 +240,9 @@ Scene category tags were assigned by systematic review of the category contact s
 ### Video Tracking Statistics & Per-Track Detection Coverage
 - **Total Video Frames:** 1440 frames (782 frames with active detections, 658 frames without detection).
 - **Unique IDs Created:** 2 tracks total (1:1 mapping with the 2 real physical eggs).
-- **Track Lifetimes:**
-  - Egg 1: 721 frames
-  - Egg 2: 652 frames
+- **Track Lifetimes & Coverage:**
+  - Egg 1: Matched in 721 of 783 demonstration frames (92% coverage; span F#222–F#999). Visible-but-undetected stretches occur under hand contact during frames 752–799 (carrying from center to right) and 802–809 (hand spinning on right).
+  - Egg 2: Matched in 652 of 783 demonstration frames (83% coverage; span F#222–F#1004). Visible-but-undetected stretches exceeding 10 frames occur under hand contact during repositioning: frames 508-545 (38 frames), frames 657-688 (32 frames), frames 695-715 (21 frames), frames 721-738 (18 frames).
 - **Loss and Recovery Events:** 15 loss events, 15 recovery events.
 - **Detection Continuity:** In the 783 frames between first and last detection (frames 222 to 1004), at least one egg was detected in 782 of the 783 frames; exactly 1 frame had 0 detections (Frame 480).
 
@@ -254,12 +254,12 @@ Scene category tags were assigned by systematic review of the category contact s
 | Track 2 | 222 | 1004 | 783 | 652 | 83.3% | F#479-F#482 (4f), F#508-F#545 (38f), F#547, F#550, F#552-F#553 (2f), F#555, F#649-F#650 (2f), F#652-F#654 (3f), F#657-F#688 (32f), F#695-F#715 (21f), F#721-F#738 (18f), F#740-F#747 (8f) |
 
 ### Track Timeline & Screen Events
-- **End-of-Video Transition (Frames 999 & 1004):** The video demonstration concludes at frames 999 to 1004 with a circular black iris wipe transition closing while eggs remain on the table. In the tracking pipeline, frames >= 1000 during this transition are treated as sequence completion (skip), rather than false tracking loss events.
-- **Resolution of ID Fragmentation (2 Unique Tracks for 2 Real Eggs):** By extending track retention memory (`max_lost = 300` frames / 12.5 s) with velocity decay ($0.90^{\text{lost}}$) and expanding the re-identification radius ($R(\text{lost}) = \min(900\text{ px}, 150\text{ px} + 20\text{ px/frame} \cdot \text{lost})$) coupled with area similarity gating ($\ge 0.15$), eggs lifted by hand and repositioned across the table reclaim their identity rather than instantiating spurious new tracks.
+- **End-of-Video Transition (Frames 999 & 1004):** The video demonstration concludes at frames 999 to 1004 with a circular black wipe transition (iris transition closing) while the eggs remain resting on the table. Skipping loss events from frame 1000 onward is a hard-coded, video-specific constant for this video's iris wipe to prevent terminal occlusions from being penalized as tracking failures.
+- **Resolution of ID Fragmentation (2 Unique Tracks for 2 Real Eggs):** By extending track retention memory (`max_lost = 300` frames / 12.5 s) with velocity decay ($0.90^{\text{lost}}$) and expanding the re-identification radius ($R(\text{lost}) = \min(900\text{ px}, 150\text{ px} + 20\text{ px/frame} \cdot \text{lost})$) with area ratio incorporated into the lost-track matching cost ($0.5 \cdot \text{dist}/R + 0.5 \cdot (1 - \text{area\_ratio})$), eggs lifted by hand and repositioned across the table reclaim their identity rather than instantiating spurious new tracks.
 - **Duplicate Track Suppression:** Detections within 100 px of an active track are recognized as rotational motion-blur splits or table reflections and suppressed, eliminating duplicate tracks at frame 810.
 - **Candidate Confirmation Filter ($N \ge 4$):** Detections must persist for at least 4 consecutive frames before confirming a new track, filtering out transient motion fragments.
 - **Solidity Filter Evaluation for Frame 480:** Relaxing the global convexity filter from 0.78 to 0.75 recovered frame 480, but introduced 53 false-positive detections across frames 244–298 (solid table reflections and hand gestures with solidity $\approx 0.76$). Therefore, the 0.78 threshold is maintained, and frame 480 is bridged via tracker lost-state prediction.
-- **Manual Ground-Truth Identity Verification:** Counted against the manual physical egg mapping, exactly 0 identity switches occurred throughout the entire 1440-frame sequence (Track 1 is 100% mapped to physical Egg A; Track 2 is 100% mapped to physical Egg B).
+- **Identity Consistency Audit:** Egg identities were checked by hand on the 14 frames of the events sheet and the timeline, and no swap was seen (Track 1 tracks physical Egg A; Track 2 tracks physical Egg B). The tracker's internal id_switches counter is a geometric heuristic and remained 0.
 
 | Track ID | Birth Frame | Last Matched Frame | Matched Frames Count | Physical Egg Description | Visual Verification |
 |:---|:---:|:---:|:---:|:---|:---:|
@@ -287,6 +287,6 @@ Scene category tags were assigned by systematic review of the category contact s
 1. **Ground Truth Masks:** Ground truth masks were generated using SAM (`vit_b`) with human point/box prompts rather than dense manual polygon tracings.
 2. **Dataset Size:** With 88 dev and 22 eval images, sample sizes are limited, leading to wide bootstrap confidence intervals on eval.
 3. **Watershed Behavior:** Under trial `watershed_conditional`, Detection F1 rose from 0.3084 to 0.4087, mean signed count error rose from +0.45 to +2.20 (over-splitting), pixel IoU unchanged. Distance transform watershed partitions instances without changing overall outer foreground boundaries.
-4. **Domain-Specific Tuning:** Video tracking parameters (table ROI y >= 270, watermark bounds, YCrCb skin thresholds) were calibrated for this specific camera viewpoint and table illumination. Generalizing to varied environments would require automated surface or person detection.
-5. **Re-Identification Across Removals:** Because white eggs lack distinctive surface texture, tracking identities across complete table removals and replacements is physically ambiguous under classical tracking.
+4. **Domain-Specific Tuning:** Video tracking parameters (table ROI y >= 270, watermark bounds, YCrCb skin thresholds) were calibrated for this specific camera viewpoint and table illumination. Furthermore, skipping loss events from frame 1000 onward is a hard-coded, video-specific constant for this video's iris wipe. Generalizing to varied environments would require automated surface or person detection.
+5. **Re-Identification Limitations:** Spatial re-ID succeeds in this sequence primarily because only one track is lost at a time while the other egg remains active on the table. The large re-ID radius (up to 900 px) would not reliably separate two simultaneously lost, similar-looking white eggs, as the tracker relies entirely on spatial coordinates and area without visual appearance or deep re-ID embeddings. Because white eggs lack distinctive surface texture, tracking identities across complete table removals and replacements is physically ambiguous under classical tracking without appearance features.
 6. **Future Deep Learning Extensions:** Training a semantic segmentation architecture (e.g. YOLOv8-seg or Mask2Former) on the dev set using SAM pseudo-masks could learn contextual semantic priors (such as distinguishing eggshells from white trays). Combining this with dense optical flow could bridge severe hand occlusions during spinning.
