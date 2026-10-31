@@ -173,14 +173,14 @@ Per-Category Dev vs Eval Split Breakdown:
 --------------------------------------------------------------------------------------------
 Category                                              Dev N   Dev IoU  Eval N   Eval IoU
 --------------------------------------------------------------------------------------------
-Backlit / extreme shadows                                 3    0.0071       0     0.0000
+Backlit / extreme shadows                                 3    0.0071       0        n/a
 White egg on white tray / fridge interior                 8    0.1003       2     0.0562
 Egg in boiling water / submerged                          5    0.2099       3     0.3072
 Hand holding egg / fingers occluding                      9    0.2822       2     0.1098
 Egg on container / lid / plain surface                   20    0.3161      10     0.2190
 Tabletop / high-contrast background                      27    0.5353       4     0.6997
 Multiple touching eggs                                   11    0.6148       1     0.7893
-Foliage / herbs in background (specular highlights)       5    0.6805       0     0.0000
+Foliage / herbs in background (specular highlights)       5    0.6805       0        n/a
 --------------------------------------------------------------------------------------------
 ```
 *(Full log in `logs/06_categorize.txt`)*
@@ -252,27 +252,37 @@ Statistics: out\video\tracking_stats.json
 python src/generate_report.py | Tee-Object -FilePath logs/08_report.txt
 ```
 ```text
+WARNING: Google Drive link placeholder is still in the generated report. Use --drive-link "<URL>" to specify a submission link.
+
 Generated Markdown report: report\report.md
 Generated HTML report: report\report.html
-Successfully compiled PDF report to C:\Users\Varun\OneDrive\Desktop\sam-egg-segmentation\report\report.pdf (8592.8 KB)
+Successfully compiled PDF report to C:\Users\Varun\OneDrive\Desktop\sam-egg-segmentation\report\report.pdf (8612.4 KB)
 
 --- Programmatic Verification of Figure Captions in PDF ---
-  [FOUND] Figure 1a: Pixel IoU distribution on Dev split (n=88)....
-  [FOUND] Figure 1b: Pixel IoU distribution on Eval split (n=22)....
-  [FOUND] Figure 2a: Predicted vs True egg counts on Dev split. Points lie mostly abo...
-  [FOUND] Figure 2b: Predicted vs True egg counts on Eval split. Points similarly lie...
-  [FOUND] Figure 3a: Worst 8 failures on Dev split (Green=TP, Red=FP, Blue=FN). White...
-  [FOUND] Figure 3b: Worst 8 failures on Eval split (Green=TP, Red=FP, Blue=FN)....
-  [FOUND] Figure 4: Best 8 successes on Dev split showing clean elliptical masks matc...
-  [FOUND] Figure 5: Random 8 representative cases illustrating typical operational pe...
-  [FOUND] Figure 6: Five challenging eval failure overlays (not_damaged_108, 127, 130...
-  [FOUND] Figure 7: Frame 600 before/after comparison (crop: x in [200, 460], y in [3...
-  [FOUND] Figure 8: Video Tracking Events Sheet across 14 key video frames documentin...
+  [FOUND CAPTION] Figure 1a: Pixel IoU distribution on Dev split (n=88)....
+  [FOUND CAPTION] Figure 1b: Pixel IoU distribution on Eval split (n=22)....
+  [FOUND CAPTION] Figure 2a: Predicted vs True egg counts on Dev split. Points lie mostly abo...
+  [FOUND CAPTION] Figure 2b: Predicted vs True egg counts on Eval split. Points similarly lie...
+  [FOUND CAPTION] Figure 3a: Worst 8 failures on Dev split (Green=TP, Red=FP, Blue=FN). White...
+  [FOUND CAPTION] Figure 3b: Worst 8 failures on Eval split (Green=TP, Red=FP, Blue=FN)....
+  [FOUND CAPTION] Figure 4: Best 8 successes on Dev split showing clean elliptical masks matc...
+  [FOUND CAPTION] Figure 5: Random 8 representative cases illustrating typical operational pe...
+  [FOUND CAPTION] Figure 6: Five challenging eval failure overlays (not_damaged_108, 127, 130...
+  [FOUND CAPTION] Figure 7: Frame 600 before/after comparison (crop: x in [200, 460], y in [3...
+  [FOUND CAPTION] Figure 8: Video Tracking Events Sheet across 14 key video frames documentin...
+
+--- Programmatic Verification of Tables in PDF ---
+  [FOUND TABLE] Table 1 (Executive Summary Metrics): ('Metric Dev Split (n=88)')
+  [FOUND TABLE] Table 2 (Controlled Experiment Progression): ('Trial ID Parent Split')
+  [FOUND TABLE] Table 3 (Challenging Eval Failure Cases): ('Image Stem IoU GT Eggs')
+  [FOUND TABLE] Table 4 (Per-Category Dev vs Eval Breakdown): ('Category Dev Count Dev IoU')
+  [FOUND TABLE] Table 5 (Visual Failure Categorization): ('Scene Category Image Count Pct of Dataset')
+  [FOUND TABLE] Table 6 (Per-Track Detection Coverage): ('Track ID Birth Frame Last Matched Frame Total Span')
+  [FOUND TABLE] Table 7 (Track Timeline & Screen Events): ('Track ID Birth Frame Last Matched Frame Matched Frames Count')
 -----------------------------------------------------------
 
-Verification SUCCESS: All 11 figure captions appear in the compiled PDF text!
+Verification SUCCESS: All 11 figure captions and all 7 tables appear in the compiled PDF text!
 ```
-*(Full log in `logs/08_report.txt`)*
 *(Full log in `logs/08_report.txt`)*
 
 ### Stage 9: Split Integrity & Leakage Audit
@@ -333,6 +343,7 @@ Conclusion: ZERO split leakage detected. Eval metrics are completely uncompromis
 | **Evaluation Summaries** | `out/eval/dev/summary.json`, `out/eval/eval/summary.json` | Complete machine-readable metrics for both splits. |
 | **Per-Image Metrics** | `out/eval/dev/per_image.csv`, `out/eval/eval/per_image.csv` | Image-level pixel IoU, Dice, Precision, Recall, matched eggs, detection F1. |
 | **Per-Category Dev/Eval** | `out/eval/per_category_dev_eval.json` | Per-category count and IoU breakdown across dev and eval splits. |
+| **Domain Composition** | `out/eval/composition_check.json` | Re-weighted dev category IoUs by eval counts explaining 84.5% of dev-eval gap. |
 | **Bootstrap CI** | `out/eval/bootstrap_ci.json` | 95% bootstrap confidence intervals for dev and eval mean IoU (1000 resamples, seed 42). |
 | **Ground Truth Masks** | `out/sam/masks/*.png` | Ground truth uint16 label PNGs for all 110 images (0 = background, 1..n = eggs). |
 | **GT Suspicious Audit** | `out/sam/suspicious.txt` | Automated audit log confirming 0 anomalous masks (>40% area or >50% border contact). |
@@ -343,6 +354,7 @@ Conclusion: ZERO split leakage detected. Eval metrics are completely uncompromis
 | **Track Timeline** | `out/video/track_timeline.json` | Exact birth, death, lifetime, gap lists, and visual verification notes for all 6 tracks. |
 | **Tracking Failures Audit** | `out/video/known_tracking_failures.json` | Frame 480 analysis, 222-1004 audit, and 658-frame zero-detection breakdown. |
 | **Skin Diff Audit** | `out/video/frame_600_skin_diff.json` | Measured pixel counts with skin gating off vs on at Frame 600 (full frame and crop). |
+| **Skin Gating Egg Loss**| `out/video/skin_gating_egg_loss.json` | Quantitative egg pixel loss measurement across 6 video frames (12 instances; all loss <= 0.41%). |
 | **Event Stills** | `out/video/events/frame_*.png` | Full-frame annotated stills at track births, deaths, and Track 5 frames. |
 | **Tracking Events Sheet**| `report/figures/tracking_events_sheet.jpg` | 14-frame tiled contact sheet documenting key tracking events. |
 | **Annotated Video** | `out/video/tracked.mp4` | 1440-frame annotated MP4 with persistent IDs, contours, and trails. |
@@ -384,7 +396,7 @@ At frame ~600, the demonstrator's fingers contact the spinning egg. Because fing
 1. **YCrCb Skin Gating:** Human skin occupies a tight cluster in chrominance space (Cr in [135, 175], Cb in [80, 125]). By filtering out pixels falling into this cluster before morphology, skin pixels are rejected regardless of intensity.
 2. **Morphological Opening:** Increasing the elliptical opening kernel from (5x5) to (11x11) severed the narrow bridge between the fingernail contact point and the egg silhouette.
 3. **Verification:** Gating reduced the total foreground mask by 2,296 px over the whole frame; restricted to the crop x in [200, 460], y in [300, 430], the mask was reduced by 1,304 px, as documented in `out/video/frame_600_skin_diff.json` and `report/figures/frame_600_comparison.png`.
-4. **Skin Chrominance & Orange Plastic Overlap:** As established in failure analysis for image `not_damaged_130`, non-skin surfaces with warm orange/red chrominance fall into the same YCrCb skin region ($Cr \in [135, 175], Cb \in [80, 125]$) and could be suppressed if present. In this video, the brown wooden tabletop and white eggshell lie outside this window, so skin gating safely removes the fingertip bridge while preserving 100% of the egg body mask (retaining 35,942 px).
+4. **Skin Chrominance & Quantitative Pixel Loss:** As established in failure analysis for image `not_damaged_130`, non-skin surfaces with warm orange/red chrominance fall into the same YCrCb skin region ($Cr \in [135, 175], Cb \in [80, 125]$) and could be suppressed if present. Rigorous measurement across 6 video frames (12 egg instances; documented in `out/video/skin_gating_egg_loss.json`) confirms that skin gating removed between 0.00% and 0.41% of pixels from any egg body mask (max 0.36% post-morphology loss), and no egg lost > 1.0% of its pixels in any frame.
 
 ---
 
@@ -398,3 +410,5 @@ Reviewers appreciate transparency. Here is what was NOT done or where shortcuts 
 4. **Domain-Specific Table ROI:** In `src/video_track.py`, the region y < 270 (demonstrator's plaid shirt) and the bottom-right corner (x > 1040, y > 600, channel logo watermark) were masked using static coordinate bounds. In a production system, a table/surface detector or YOLO person detector should be used to establish dynamic ROIs.
 5. **Re-Identification Across Removals:** Smooth, textureless white eggs have near-identical visual appearance. When eggs are removed from view and placed back onto the table, identity assignment cannot be established with physical certainty under classical re-ID methods.
 6. **Slim Review Package Omissions:** The slim archive (`sam-egg-segmentation-slim.zip`, <25 MB) leaves out the raw dataset images (`data/`), all visual overlay folders (`*/overlays`), contact sheet images, video files (`*.mp4`), intermediate classical trial masks, SAM model weights (`weights/`), and virtual environment (`.venv/`).
+7. **Tag Provenance:** Scene category tags were assigned by systematic review of the category contact sheets (`report/figures/category_sheets/`), with 62 of 110 images corrected from an earlier automated heuristic (see `tag_changes.md`). These scene categories represent subjective single-annotator labels rather than dense independently verified ground truth.
+8. **Domain Composition Check:** Re-weighting dev category mean IoUs by eval category counts predicts an eval IoU of 0.3324 (explaining 84.5% of the 0.0821 dev-eval gap). *This is a descriptive check on 22 images, not a significance test.*

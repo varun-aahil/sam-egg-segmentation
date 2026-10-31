@@ -55,6 +55,7 @@ def main():
             "out/eval/hand_130_skin_fraction.json",
             "out/eval/bootstrap_ci.json",
             "out/eval/per_category_dev_eval.json",
+            "out/eval/composition_check.json",
             "out/eval/per_image_dev.csv",
             "out/eval/per_image_eval.csv",
             "out/eval/summary_dev.json",
@@ -67,6 +68,7 @@ def main():
             "out/video/track_timeline.json",
             "out/video/known_tracking_failures.json",
             "out/video/frame_600_skin_diff.json",
+            "out/video/skin_gating_egg_loss.json",
         ]:
             return True
         if rel in ["out/sam/suspicious.txt", "out/sam/gt_fix_audit.json"]:

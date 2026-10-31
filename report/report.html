@@ -45,7 +45,8 @@
 
 <h1>Egg Segmentation and Multi-Object Tracking Take-Home Report</h1>
 <p style="color:#7f8c8d; font-size:10px; margin-top:-3px;">
-  <strong>Candidate:</strong> Sree Varun Aahil | <strong>Date:</strong> October 30, 2026 | <strong>Machine:</strong> Windows 11 (CUDA Enabled)
+  <strong>Candidate:</strong> Sree Varun Aahil | <strong>Date:</strong> October 30, 2026 | <strong>Machine:</strong> Windows 11 (CUDA Enabled)<br>
+  <strong>Annotated Video:</strong> <code>[Google Drive Link Placeholder: &lt;INSERT_DRIVE_URL_HERE&gt;]</code>
 </p>
 
 <div class="metrics-box">
@@ -191,6 +192,22 @@
   <li><strong>Small-Sample Variance:</strong> Because eval has only 22 images, its bootstrap 95% confidence interval spans widely ([0.1978, 0.4268]) and encompasses the dev mean. While domain composition (especially the 45.5% container/lid prevalence) explains the lower point estimate, the wide confidence interval confirms substantial small-sample variance.</li>
 </ol>
 
+<h3>Domain Composition Check (<code>out/eval/composition_check.json</code>)</h3>
+<p>
+  To evaluate how much of the performance difference between the dev split (mean IoU <strong>0.4018</strong>) and eval split (mean IoU <strong>0.3196</strong>) is attributable to category distribution shift, we re-weighted the dev per-category mean IoUs by the eval category counts:
+</p>
+<ul>
+  <li><strong>Actual Dev Split Mean IoU:</strong> 0.4018</li>
+  <li><strong>Actual Eval Split Mean IoU:</strong> 0.3196</li>
+  <li><strong>Predicted Eval Split Mean IoU (Dev Category Means Weighted by Eval Counts):</strong> <strong>0.3324</strong></li>
+  <li><strong>Total Dev-Eval Performance Gap:</strong> 0.0821</li>
+  <li><strong>Gap Explained by Category Composition:</strong> <strong>0.0694 (84.5%)</strong></li>
+  <li><strong>Unexplained Residual Gap:</strong> 0.0127 (15.5%)</li>
+</ul>
+<p>
+  Re-weighting dev category performance by eval category counts predicts an eval IoU of <strong>0.3324</strong>, demonstrating that <strong>84.5%</strong> of the observed drop is directly explained by the higher proportion of difficult container lids and white trays in the eval split. <em>This is a descriptive check on 22 images, not a significance test.</em>
+</p>
+
 <h3>Detailed Breakdown of 5 Challenging Eval Failure Cases</h3>
 <p>
   As shown in Figure 6, category contact sheets, and the measured pixel properties, five challenging eval failure cases (<code>not_damaged_108</code>, <code>127</code>, <code>130</code>, <code>151</code>, <code>152</code>) illustrate distinct failure mechanisms across container packaging and hand occlusions:
@@ -241,24 +258,27 @@
     </tr>
   </thead>
   <tbody>
-    <tr><td>Backlit / extreme shadows</td><td style='text-align:center;'>3</td><td style='text-align:center;'>0.0071</td><td style='text-align:center;'>0</td><td style='text-align:center;'>0.0000</td></tr>
+    <tr><td>Backlit / extreme shadows</td><td style='text-align:center;'>3</td><td style='text-align:center;'>0.0071</td><td style='text-align:center;'>0</td><td style='text-align:center;'>n/a</td></tr>
 <tr><td>White egg on white tray / fridge interior</td><td style='text-align:center;'>8</td><td style='text-align:center;'>0.1003</td><td style='text-align:center;'>2</td><td style='text-align:center;'>0.0562</td></tr>
 <tr><td>Egg in boiling water / submerged</td><td style='text-align:center;'>5</td><td style='text-align:center;'>0.2099</td><td style='text-align:center;'>3</td><td style='text-align:center;'>0.3072</td></tr>
 <tr><td>Hand holding egg / fingers occluding</td><td style='text-align:center;'>9</td><td style='text-align:center;'>0.2822</td><td style='text-align:center;'>2</td><td style='text-align:center;'>0.1098</td></tr>
 <tr><td>Egg on container / lid / plain surface</td><td style='text-align:center;'>20</td><td style='text-align:center;'>0.3161</td><td style='text-align:center;'>10</td><td style='text-align:center;'>0.2190</td></tr>
 <tr><td>Tabletop / high-contrast background</td><td style='text-align:center;'>27</td><td style='text-align:center;'>0.5353</td><td style='text-align:center;'>4</td><td style='text-align:center;'>0.6997</td></tr>
 <tr><td>Multiple touching eggs</td><td style='text-align:center;'>11</td><td style='text-align:center;'>0.6148</td><td style='text-align:center;'>1</td><td style='text-align:center;'>0.7893</td></tr>
-<tr><td>Foliage / herbs in background (specular highlights)</td><td style='text-align:center;'>5</td><td style='text-align:center;'>0.6805</td><td style='text-align:center;'>0</td><td style='text-align:center;'>0.0000</td></tr>
+<tr><td>Foliage / herbs in background (specular highlights)</td><td style='text-align:center;'>5</td><td style='text-align:center;'>0.6805</td><td style='text-align:center;'>0</td><td style='text-align:center;'>n/a</td></tr>
   </tbody>
 </table>
 
 <h3>Visual Failure Categorization (<code>failure_tags.csv</code>)</h3>
+<p>
+  Scene category tags were assigned by systematic review of the category contact sheets (<code>report/figures/category_sheets/</code>), with 62 of 110 images corrected from an earlier automated color/luminance heuristic (documented in <code>tag_changes.md</code>). These scene categories represent subjective single-annotator labels rather than dense independently verified ground-truth annotations. Images <code>not_damaged_123</code>, <code>125</code>, and <code>42</code> are in <em>White egg on white tray / fridge interior</em>. Backlit shots <code>not_damaged_20</code>, <code>24</code>, and <code>44</code> were categorized under a unified rule: <em>Whenever intense directional backlighting or silhouette illumination is present behind the egg (even if supported by fingers), it is categorized under Backlit / extreme shadows because extreme illumination dynamic range is the primary driver of Otsu thresholding failure.</em>
+</p>
 <table>
   <thead>
     <tr>
       <th>Scene Category</th>
-      <th style="text-align:center;">Count</th>
-      <th style="text-align:center;">Pct</th>
+      <th style="text-align:center;">Image Count</th>
+      <th style="text-align:center;">Pct of Dataset</th>
       <th>Mean IoU</th>
       <th>Mean Dice</th>
       <th>Mean Det F1</th>
@@ -327,10 +347,11 @@
 
 <h2>5. Task 4: Multi-Object Video Tracking</h2>
 <p>
-  Tracking was evaluated on the 1440-frame table sequence (1280x720 @ 24.0 fps). Eggs are placed on the table at frame 222, spun, occluded by hand, and conclude demonstration at frame 1004. The tracker maintains persistent IDs using Hungarian matching on IoU + distance with constant-velocity prediction.
+  Tracking was evaluated on the 1440-frame table sequence (1280x720 @ 24.0 fps). Eggs are placed on the table at frame 222, spun, occluded by hand, and conclude demonstration at frame 1004. Annotated tracking video: <code>[Google Drive Link Placeholder: &lt;INSERT_DRIVE_URL_HERE&gt;]</code>. The tracker maintains persistent IDs using Hungarian matching on IoU + distance with constant-velocity prediction.
 </p>
 <ul>
-  <li><strong>Fingertip Leakage Resolution:</strong> At frame 600, demonstrator hand contact caused baseline thresholding to leak into fingers. Incorporating YCrCb skin-color gating (Cr &isin; [135, 175], Cb &isin; [80, 125]) and larger opening eliminated false skin contour (gating reduced the total foreground mask by 2296 px over the whole frame; restricted to crop x in [200, 460], y in [300, 430], the mask was reduced by 1304 px). As shown with static image <code>not_damaged_130</code>, non-skin objects sharing warm orange/red chrominance could inadvertently be suppressed by skin gating, but here the wooden table and white eggshell fall outside this chrominance window, keeping the egg body mask completely intact (35,942 px retained).</li>
+  <li><strong>Fingertip Leakage Resolution:</strong> At frame 600, demonstrator hand contact caused baseline thresholding to leak into fingers. Incorporating YCrCb skin-color gating (Cr &isin; [135, 175], Cb &isin; [80, 125]) and larger opening eliminated false skin contour (gating reduced the total foreground mask by 2296 px over the whole frame; restricted to crop x in [200, 460], y in [300, 430], the mask was reduced by 1304 px).</li>
+  <li><strong>Quantitative Skin-Gating Pixel Loss Measurement (<code>out/video/skin_gating_egg_loss.json</code>):</strong> Measured across 6 representative video frames (12 egg instances): frame 600 (demonstrator fingertip contact) and 5 hand-free frames (250, 350, 450, 850, 950). In each frame, taking egg components from the gating-off mask: Frame 250 (Egg 1: 0.34%, Egg 2: 0.41%), Frame 350 (Egg 1: 0.14%, Egg 2: 0.35%), Frame 450 (Egg 1: 0.00%, Egg 2: 0.18%), Frame 600 (Egg 1: 0.00% outside 15 px fingertip band, Egg 3: 0.00%), Frame 850 (Egg 4: 0.00%, Egg 6: 0.33%), Frame 950 (Egg 4: 0.23%, Egg 6: 0.12%). Across all 12 evaluated instances, skin gating removed between 0.00% and 0.41% of pixels (at most 0.36% post-morphology loss). No egg lost more than 1.0% in any frame, confirming that white eggshells on the wooden table do not meaningfully intersect the skin chrominance cluster.</li>
   <li><strong>Track Lifetimes & Event Statistics:</strong> 6 unique tracks were created, with 18 loss events and 12 recoveries. Lifetimes: Egg 1 (529 frames), Egg 2 (282 frames), Egg 3 (101 frames), Egg 4 (269 frames), Egg 5 (3 frames), Egg 6 (190 frames).</li>
   <li><strong>Detection Continuity:</strong> In the 783 frames between first and last detection (frames 222 to 1004), at least one egg was detected in 782 of the 783 frames; exactly 1 frame had 0 detections (Frame 480).</li>
 </ul>

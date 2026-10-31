@@ -3,6 +3,7 @@
 **Candidate:** Sree Varun Aahil  
 **Dataset:** Roboflow Egg Dataset (110 images, 640x640, grouped dev/eval 88/22)  
 **Video Test:** YouTube `Y4JyV94y2_A` (1280x720 table experiment, 1440 frames @ 24.0 fps)  
+**Annotated Video:** [Google Drive Link Placeholder: <INSERT_DRIVE_URL_HERE>]  
 **Submission Date:** October 30, 2026  
 
 ---
@@ -116,6 +117,17 @@ Inspection of per-category results reveals the concrete factors driving the gap 
 3. **Higher Ratio of Clean Tabletop and Multi-Egg Scenes in Dev:** In contrast, the dev split benefits from 27 tabletop scenes with higher contrast (mean IoU **0.5353**), 11 multi-egg scenes (mean IoU **0.6148**), and 5 foliage scenes (mean IoU **0.6805**)—together comprising 43 of 88 dev images (48.9% of dev).
 4. **Small-Sample Variance:** Because eval has only 22 images, its bootstrap 95% confidence interval spans widely ([0.1978, 0.4268]) and encompasses the dev mean. While domain composition (especially the 45.5% container/lid prevalence) explains the lower point estimate, the wide confidence interval confirms substantial small-sample variance.
 
+### Domain Composition Check (`out/eval/composition_check.json`)
+To evaluate how much of the performance gap between the dev split (mean IoU **0.4018**) and eval split (mean IoU **0.3196**) is attributable to category distribution shift, we re-weighted the dev per-category mean IoUs by the eval category counts:
+- **Actual Dev Split Mean IoU:** 0.4018
+- **Actual Eval Split Mean IoU:** 0.3196
+- **Predicted Eval Split Mean IoU (Dev Category Means Weighted by Eval Counts):** **0.3324**
+- **Total Performance Gap (Dev - Eval):** 0.0821
+- **Gap Explained by Category Composition:** **0.0694 (84.5%)**
+- **Unexplained Residual Gap:** 0.0127 (15.5%)
+
+Re-weighting dev category performance by eval category counts predicts an eval IoU of **0.3324**, demonstrating that **84.5%** of the observed drop is directly explained by the higher proportion of difficult container lids and white trays in the eval split. *This is a descriptive check on 22 images, not a significance test.*
+
 ### Detailed Breakdown of 5 Challenging Eval Failure Cases
 As shown in Figure 6, category contact sheets, and the measured pixel properties, five challenging eval failure cases (`not_damaged_108`, `127`, `130`, `151`, `152`) illustrate distinct failure mechanisms across container packaging and hand occlusions:
 - `not_damaged_108` (IoU: 0.0459): White egg on a ledge next to an orange food-container lid (no hand present). Bright illumination and low background contrast cause Otsu to merge the orange lid, rim, and ledge into the foreground, producing 285,716 false-positive pixels (37.8% falls in the YCrCb skin range due to orange plastic chrominance).
@@ -139,17 +151,17 @@ As shown in Figure 6, category contact sheets, and the measured pixel properties
 
 | Category | Dev Count | Dev IoU | Eval Count | Eval IoU |
 |:---|:---:|:---:|:---:|:---:|
-| Backlit / extreme shadows | 3 | 0.0071 | 0 | 0.0000 |
+| Backlit / extreme shadows | 3 | 0.0071 | 0 | n/a |
 | White egg on white tray / fridge interior | 8 | 0.1003 | 2 | 0.0562 |
 | Egg in boiling water / submerged | 5 | 0.2099 | 3 | 0.3072 |
 | Hand holding egg / fingers occluding | 9 | 0.2822 | 2 | 0.1098 |
 | Egg on container / lid / plain surface | 20 | 0.3161 | 10 | 0.2190 |
 | Tabletop / high-contrast background | 27 | 0.5353 | 4 | 0.6997 |
 | Multiple touching eggs | 11 | 0.6148 | 1 | 0.7893 |
-| Foliage / herbs in background (specular highlights) | 5 | 0.6805 | 0 | 0.0000 |
+| Foliage / herbs in background (specular highlights) | 5 | 0.6805 | 0 | n/a |
 
 ### Visual Failure Categorization (`failure_tags.csv`)
-All 110 dataset images were categorized by physical scene type and audited via category contact sheets (`report/figures/category_sheets/`). Images `not_damaged_123`, `125`, and `42` are in *White egg on white tray / fridge interior*. Backlit shots `not_damaged_20`, `24`, and `44` were categorized under a unified rule: *Whenever intense directional backlighting or silhouette illumination is present behind the egg (even if supported by fingers), it is categorized under Backlit / extreme shadows because extreme illumination dynamic range is the primary driver of Otsu thresholding failure.*
+Scene category tags were assigned by systematic review of the category contact sheets (`report/figures/category_sheets/`), with 62 of 110 images corrected from an earlier automated color/luminance heuristic (documented in `tag_changes.md`). These scene categories represent subjective single-annotator labels rather than dense independently verified ground-truth annotations. Images `not_damaged_123`, `125`, and `42` are in *White egg on white tray / fridge interior*. Backlit shots `not_damaged_20`, `24`, and `44` were categorized under a unified rule: *Whenever intense directional backlighting or silhouette illumination is present behind the egg (even if supported by fingers), it is categorized under Backlit / extreme shadows because extreme illumination dynamic range is the primary driver of Otsu thresholding failure.*
 
 | Scene Category | Image Count | Pct of Dataset | Mean IoU | Mean Dice | Mean Det F1 | Primary Failure Mechanism |
 |:---|:---:|:---:|:---:|:---:|:---:|:---|
@@ -199,6 +211,7 @@ All 110 dataset images were categorized by physical scene type and audited via c
 ### Video Dataset
 - Video: YouTube `Y4JyV94y2_A` (1280x720 @ 24.0 fps, 1440 frames total).
 - Table demonstration comparing boiled and raw egg spinning. Eggs are placed at frame 222, spun, occluded by hand, and conclude demonstration at frame 1004.
+- Annotated Tracking Video: [Google Drive Link Placeholder: <INSERT_DRIVE_URL_HERE>]
 
 ### Video Tracking Architecture
 1. **Domain Adaptation:** Table ROI constraint (y >= 270) rejects shirt patterns; watermark suppression at bottom-right (x >= 1040, y >= 600).
@@ -206,7 +219,14 @@ All 110 dataset images were categorized by physical scene type and audited via c
    - At frame ~600, demonstrator fingers brush against the egg. Baseline thresholding caused segmentation to leak into pale fingertips.
    - Fixed by incorporating **YCrCb skin-color gating** (`Cr in [135, 175] & Cb in [80, 125]`) combined with an elliptical morphological opening kernel (11x11).
    - Gating reduced the total foreground mask by 2296 px over the whole frame; restricted to crop x in [200, 460], y in [300, 430], the mask was reduced by 1304 px.
-   - *Chrominance Model Consideration:* As demonstrated in static failure case `not_damaged_130`, non-skin objects sharing warm orange/red chrominance ($Cr \in [135, 175], Cb \in [80, 125]$) could inadvertently be suppressed by skin gating. In this video sequence, however, the brown wooden tabletop and white eggshell fall outside this chrominance window, leaving the egg body mask completely intact (retaining 35,942 px).
+   - *Quantitative Measurement of Skin-Gating Egg Pixel Loss (`out/video/skin_gating_egg_loss.json`):* To test whether YCrCb skin gating inadvertently removes valid egg pixels, we measured pixel loss across 6 representative frames (12 egg instances): frame 600 (fingertip contact) and 5 hand-free frames over frames 222 to 1004 (frames 250, 350, 450, 850, 950). In each frame, taking egg components from the gating-off mask:
+     - **Frame 250 (Hand-free):** Egg 1 removed 64 px (0.34%, 0.00% post-morph); Egg 2 removed 78 px (0.41%, 0.09% post-morph).
+     - **Frame 350 (Hand-free):** Egg 1 removed 27 px (0.14%, 0.00% post-morph); Egg 2 removed 72 px (0.35%, 0.17% post-morph).
+     - **Frame 450 (Hand-free):** Egg 1 removed 0 px (0.00%, 0.00% post-morph); Egg 2 removed 34 px (0.18%, 0.25% post-morph).
+     - **Frame 600 (Fingertip contact):** For Egg 1, excluding a 15 px band around fingertip contact leaves an egg body of 17,146 px, with exactly 0 px (0.00%, 0.00% post-morph) removed. For Egg 3 (untouched spinning egg, 17,645 px), 0 px (0.00%, 0.00% post-morph) were removed.
+     - **Frame 850 (Hand-free):** Egg 4 removed 0 px (0.00%, 0.00% post-morph); Egg 6 removed 64 px (0.33%, 0.36% post-morph).
+     - **Frame 950 (Hand-free):** Egg 4 removed 40 px (0.23%, 0.27% post-morph); Egg 6 removed 22 px (0.12%, 0.14% post-morph).
+     Across all 12 evaluated egg instances, skin gating removed between **0.00% and 0.41%** of egg pixels (with at most 0.36% post-morphology loss). **No egg lost more than 1.0% of its pixels in any frame**, confirming that white eggshells on the wooden table do not meaningfully intersect the skin chrominance cluster.
 3. **Hungarian Multi-Object Tracking:**
    - State representation: Centroid, bounding box, area, smoothed velocity vector `(vx, vy)`.
    - Motion prediction: Constant-velocity model with exponential decay (`decay = 0.90^lost`).
