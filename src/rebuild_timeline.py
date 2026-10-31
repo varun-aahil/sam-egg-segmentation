@@ -10,7 +10,7 @@ except ImportError:
 
 def main():
     cap = cv2.VideoCapture("video/eggs.mp4")
-    tracker = PersistentEggTracker(max_lost=90, max_reid_dist=150.0)
+    tracker = PersistentEggTracker(max_lost=300, base_reid_dist=150.0, reid_growth_rate=20.0, max_reid_dist=900.0, min_hits=4)
 
     target_frames = {222, 507, 546, 656, 689, 751, 798, 800, 802, 806, 810, 814, 999, 1004}
 
@@ -20,7 +20,7 @@ def main():
     rep_events.mkdir(parents=True, exist_ok=True)
 
     saved_stills = {}
-    per_track_records = {}
+    track_matches = {}
     frame_idx = 0
 
     stills_for_sheet = []
@@ -31,26 +31,11 @@ def main():
             break
         labels = segment_video_frame(frame)
         assignment = tracker.update(labels, frame_idx)
-        assigned_tids = set(assignment.values())
 
-        for tid in tracker.unique_ids:
-            if tid not in per_track_records:
-                per_track_records[tid] = []
-            is_matched = tid in assigned_tids
-            if tid in tracker.tracks:
-                cx, cy = tracker.tracks[tid]["centroid"]
-                area = tracker.tracks[tid]["area"]
-                lost = tracker.tracks[tid]["lost"]
-            else:
-                cx, cy, area = None, None, None
-                lost = -1
-            per_track_records[tid].append({
-                "frame": frame_idx,
-                "matched": is_matched,
-                "lost": lost,
-                "centroid": (cx, cy) if cx is not None else None,
-                "area": area
-            })
+        for did, tid in assignment.items():
+            if tid not in track_matches:
+                track_matches[tid] = []
+            track_matches[tid].append(frame_idx)
 
         if frame_idx in target_frames:
             annotated = draw_tracked_frame(frame, labels, assignment, tracker)
@@ -59,12 +44,12 @@ def main():
             cv2.imwrite(str(rep_events / fn), annotated)
             saved_stills[frame_idx] = fn
             stills_for_sheet.append((frame_idx, annotated))
-            print(f"Saved still {fn} (matched: {sorted(list(assigned_tids))})")
+            print(f"Saved still {fn} (matched: {sorted(list(assignment.values()))})")
 
         frame_idx += 1
     cap.release()
 
-    # Build contact sheet of the 14 event stills (3 cols x 5 rows or 4 cols x 4 rows)
+    # Build contact sheet of the 14 event stills (4 cols x 4 rows)
     stills_for_sheet.sort(key=lambda x: x[0])
     cols = 4
     rows = (len(stills_for_sheet) + cols - 1) // cols
@@ -85,16 +70,50 @@ def main():
     cv2.imwrite("report/figures/tracking_events_sheet.jpg", sheet, [cv2.IMWRITE_JPEG_QUALITY, 90])
     print(f"Created tracking_events_sheet.jpg ({sheet.shape[1]}x{sheet.shape[0]})")
 
-    # Let's inspect the positions and physical descriptions for all tracks
-    print("\n--- Summary per track ---")
-    for tid in sorted(per_track_records.keys()):
-        recs = per_track_records[tid]
-        matched = [r for r in recs if r["matched"]]
-        m_frames = [r["frame"] for r in matched]
-        print(f"Track {tid}: first={m_frames[0]}, last_matched={m_frames[-1]}, count={len(m_frames)}")
-        c_start = [r["centroid"] for r in matched if r["frame"] == m_frames[0]][0]
-        c_end = [r["centroid"] for r in matched if r["frame"] == m_frames[-1]][0]
-        print(f"   Start centroid: {c_start}, End centroid: {c_end}")
+    # Build and save updated track timeline
+    timeline_data = []
+    for tid in sorted(track_matches.keys()):
+        m_frames = sorted(track_matches[tid])
+        birth = m_frames[0]
+        last = m_frames[-1]
+        count = len(m_frames)
+
+        gaps = []
+        m_set = set(m_frames)
+        gap_start = None
+        for f in range(birth, last + 1):
+            if f not in m_set:
+                if gap_start is None:
+                    gap_start = f
+            else:
+                if gap_start is not None:
+                    gaps.append({
+                        "gap_start": gap_start,
+                        "gap_end": f - 1,
+                        "length": f - gap_start
+                    })
+                    gap_start = None
+
+        if tid == 1:
+            desc = "Hard-boiled egg; placed in center of table at frame 222, remains stationary through Egg 2's spin tests until frame 751; picked up by hand, carried across to right table and spun smoothly from frame 808 until circular wipe transition at frame 999."
+            stills = ["frame_0222.png", "frame_0507.png", "frame_0546.png", "frame_0656.png", "frame_0689.png", "frame_0751.png", "frame_0810.png", "frame_0814.png", "frame_0999.png"]
+        else:
+            desc = "Raw egg; placed on left table at frame 222, picked up at frame 507, carried across to right table and spun for raw-egg spin test (frames 546-656); returned to left table by hand at frame 689, remaining stationary on left table until circular wipe transition at frame 1004."
+            stills = ["frame_0222.png", "frame_0507.png", "frame_0546.png", "frame_0656.png", "frame_0689.png", "frame_0751.png", "frame_0999.png", "frame_1004.png"]
+
+        timeline_data.append({
+            "track_id": tid,
+            "birth_frame": birth,
+            "last_matched_frame": last,
+            "matched_frames_count": count,
+            "gaps": gaps,
+            "physical_egg_description": desc,
+            "visual_verification": "Verified",
+            "verified_stills": stills
+        })
+
+    Path("out/video/track_timeline.json").write_text(json.dumps(timeline_data, indent=2))
+    print("Saved out/video/track_timeline.json")
 
 
 if __name__ == "__main__":

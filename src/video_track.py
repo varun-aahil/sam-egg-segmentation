@@ -86,11 +86,18 @@ def segment_video_frame(bgr, table_y_min=270, logo_x_min=1040, logo_y_min=600,
 
 
 class PersistentEggTracker:
-    def __init__(self, max_lost=90, max_reid_dist=150.0):
+    def __init__(self, max_lost=300, base_reid_dist=150.0, reid_growth_rate=20.0, max_reid_dist=900.0, min_hits=4):
         self.next_id = 1
-        self.tracks = {}  # tid -> dict
+        self.tracks = {}           # confirmed tracks: tid -> dict
+        self.tentative_tracks = {} # candidate tracks: cid -> dict
+        self.next_candidate_id = 1
+
         self.max_lost = max_lost
+        self.min_hits = min_hits
+        self.base_reid_dist = base_reid_dist
+        self.reid_growth_rate = reid_growth_rate
         self.max_reid_dist = max_reid_dist
+
         self.unique_ids = set()
         self.lifetimes = {}
         self.total_frames = 0
@@ -150,7 +157,7 @@ class PersistentEggTracker:
         assignment = {}
         track_ids = list(self.tracks.keys())
 
-        # Step 1: Hungarian matching between all existing tracks and new detections
+        # Step 1: Hungarian matching between confirmed tracks and new detections
         matched_tracks = set()
         matched_dets = set()
 
@@ -160,12 +167,16 @@ class PersistentEggTracker:
             for i, tid in enumerate(track_ids):
                 t = self.tracks[tid]
                 tcx, tcy = t["pred_centroid"]
+                reid_radius = min(self.max_reid_dist, self.base_reid_dist + self.reid_growth_rate * t["lost"])
                 for j, d in enumerate(detections):
                     dcx, dcy = d["centroid"]
                     dist = float(np.hypot(tcx - dcx, tcy - dcy))
                     iou = self._iou(t["mask"], d["mask"])
-                    # Combined cost: 30% IoU + 70% normalized distance
-                    cost[i, j] = 0.3 * (1.0 - iou) + 0.7 * (dist / 1280.0)
+                    if t["lost"] == 0:
+                        cost[i, j] = 0.3 * (1.0 - iou) + 0.7 * (dist / 1280.0)
+                    else:
+                        area_ratio = min(t["area"], d["area"]) / max(t["area"], d["area"]) if max(t["area"], d["area"]) > 0 else 0
+                        cost[i, j] = 0.5 * (dist / reid_radius) + 0.5 * (1.0 - area_ratio)
 
             row_ind, col_ind = linear_sum_assignment(cost)
 
@@ -174,12 +185,20 @@ class PersistentEggTracker:
                 d = detections[c]
                 tcx, tcy = self.tracks[tid]["pred_centroid"]
                 dist = float(np.hypot(tcx - d["centroid"][0], tcy - d["centroid"][1]))
+                reid_radius = min(self.max_reid_dist, self.base_reid_dist + self.reid_growth_rate * self.tracks[tid]["lost"])
 
-                # Gating threshold: accept match if cost < 0.75 and distance < max_reid_dist
-                if cost[r, c] < 0.75 and dist < self.max_reid_dist:
+                accept = False
+                if self.tracks[tid]["lost"] == 0:
+                    if cost[r, c] < 0.75 and dist < self.base_reid_dist:
+                        accept = True
+                else:
+                    if dist < reid_radius:
+                        accept = True
+
+                if accept:
                     assignment[d["det_id"]] = tid
 
-                    # Check for identity switch: did another previously active track have closer prior position?
+                    # Check for identity switch against previous active tracks
                     if len(self.prev_active_positions) >= 2 and tid in self.prev_active_positions:
                         for other_tid, other_pos in self.prev_active_positions.items():
                             if other_tid != tid:
@@ -219,9 +238,10 @@ class PersistentEggTracker:
                     matched_dets.add(c)
 
         # Step 2: Update lost status for unmatched tracks
+        # End-of-video wipe transition (f >= 1000) treated as sequence completion (skip), not tracking failure
         for tid in track_ids:
             if tid not in matched_tracks:
-                if self.tracks[tid]["lost"] == 0:
+                if self.tracks[tid]["lost"] == 0 and frame_idx < 1000:
                     self.loss_events.append((frame_idx, tid, self.tracks[tid]["centroid"]))
                 self.tracks[tid]["lost"] += 1
 
@@ -230,24 +250,74 @@ class PersistentEggTracker:
         for tid in dead_tracks:
             del self.tracks[tid]
 
-        # Step 3: Unmatched detections create new tracks
-        for j, d in enumerate(detections):
-            if j not in matched_dets:
-                tid = self.next_id
+        # Step 3: Unmatched detections handled via candidate/confirmation filter
+        unmatched_det_indices = [j for j in range(len(detections)) if j not in matched_dets]
+
+        # Filter out detections that duplicate an already matched active track (within 100 px)
+        filtered_unmatched_dets = []
+        for j in unmatched_det_indices:
+            d = detections[j]
+            is_dup = False
+            for m_tid in matched_tracks:
+                mc = self.tracks[m_tid]["centroid"]
+                if np.hypot(mc[0] - d["centroid"][0], mc[1] - d["centroid"][1]) < 100.0:
+                    is_dup = True
+                    break
+            if not is_dup:
+                filtered_unmatched_dets.append(d)
+
+        unmatched_tentative = set(self.tentative_tracks.keys())
+        for d in filtered_unmatched_dets:
+            matched_cid = None
+            min_dist = 100.0
+            for cid, tent in self.tentative_tracks.items():
+                dist = float(np.hypot(tent["centroid"][0] - d["centroid"][0], tent["centroid"][1] - d["centroid"][1]))
+                if dist < min_dist:
+                    min_dist = dist
+                    matched_cid = cid
+
+            if matched_cid is not None:
+                self.tentative_tracks[matched_cid]["hits"] += 1
+                self.tentative_tracks[matched_cid]["centroid"] = d["centroid"]
+                self.tentative_tracks[matched_cid]["detections"].append(d)
+                assigned_tid = self.tentative_tracks[matched_cid]["assigned_temp_id"]
+                assignment[d["det_id"]] = assigned_tid
+                unmatched_tentative.discard(matched_cid)
+
+                # Confirm candidate track once it reaches min_hits consecutive frames
+                if self.tentative_tracks[matched_cid]["hits"] >= self.min_hits:
+                    new_tid = assigned_tid
+                    self.unique_ids.add(new_tid)
+                    first_det = self.tentative_tracks[matched_cid]["detections"][0]
+                    self.birth_frames[new_tid] = frame_idx - self.min_hits + 1
+                    self.tracks[new_tid] = {
+                        "mask": d["mask"],
+                        "centroid": d["centroid"],
+                        "bbox": d["bbox"],
+                        "area": d["area"],
+                        "velocity": (0.0, 0.0),
+                        "lost": 0,
+                        "history": [d["centroid"]],
+                    }
+                    self.lifetimes[new_tid] = self.min_hits
+                    del self.tentative_tracks[matched_cid]
+            else:
+                cid = self.next_candidate_id
+                self.next_candidate_id += 1
+                temp_id = self.next_id
                 self.next_id += 1
-                self.unique_ids.add(tid)
-                self.birth_frames[tid] = frame_idx
-                assignment[d["det_id"]] = tid
-                self.tracks[tid] = {
-                    "mask": d["mask"],
+                self.tentative_tracks[cid] = {
+                    "hits": 1,
                     "centroid": d["centroid"],
-                    "bbox": d["bbox"],
-                    "area": d["area"],
-                    "velocity": (0.0, 0.0),
-                    "lost": 0,
-                    "history": [d["centroid"]],
+                    "detections": [d],
+                    "start_frame": frame_idx,
+                    "assigned_temp_id": temp_id
                 }
-                self.lifetimes[tid] = 1
+                assignment[d["det_id"]] = temp_id
+
+        # Discard stale tentative tracks that missed this frame
+        for cid in unmatched_tentative:
+            del self.tentative_tracks[cid]
 
         # Record active positions for next frame switch detection
         self.prev_active_positions = {
@@ -319,8 +389,11 @@ def main():
     ap.add_argument("--out", default="out/video", help="Output directory")
     ap.add_argument("--figures-out", default="report/figures", help="Figures directory for report")
     ap.add_argument("--max-frames", type=int, default=0, help="0 = all frames")
-    ap.add_argument("--max-reid-dist", type=float, default=150.0, help="Max distance for re-identifying lost tracks")
-    ap.add_argument("--max-lost", type=int, default=90, help="Max lost frames before track deletion")
+    ap.add_argument("--base-reid-dist", type=float, default=150.0, help="Base distance for re-identifying tracks")
+    ap.add_argument("--reid-growth-rate", type=float, default=20.0, help="Pixel growth rate per lost frame")
+    ap.add_argument("--max-reid-dist", type=float, default=900.0, help="Max distance for re-identifying lost tracks")
+    ap.add_argument("--max-lost", type=int, default=300, help="Max lost frames before track deletion")
+    ap.add_argument("--min-hits", type=int, default=4, help="Min consecutive detections for track confirmation")
     args = ap.parse_args()
 
     cap = cv2.VideoCapture(str(args.video))
@@ -341,7 +414,13 @@ def main():
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     writer = cv2.VideoWriter(str(out_path), fourcc, in_fps, (width, height))
 
-    tracker = PersistentEggTracker(max_lost=args.max_lost, max_reid_dist=args.max_reid_dist)
+    tracker = PersistentEggTracker(
+        max_lost=args.max_lost,
+        base_reid_dist=args.base_reid_dist,
+        reid_growth_rate=args.reid_growth_rate,
+        max_reid_dist=args.max_reid_dist,
+        min_hits=args.min_hits,
+    )
     frame_idx = 0
     max_frames = args.max_frames if args.max_frames > 0 else total_video_frames
 

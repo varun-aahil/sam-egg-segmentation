@@ -10,3 +10,5 @@ __pycache__/
 
 weights/
 *.zip
+report/figures/events/
+
