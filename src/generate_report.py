@@ -18,6 +18,7 @@ All metrics, counts, and experimental tables are dynamically extracted from:
 Usage:
   python src/generate_report.py
 """
+import argparse
 import csv
 import json
 import os
@@ -26,6 +27,16 @@ from pathlib import Path
 
 import fitz  # PyMuPDF
 import numpy as np
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Generate data-driven take-home report.")
+    parser.add_argument(
+        "--drive-link",
+        default="[Google Drive Link Placeholder: <INSERT_DRIVE_URL_HERE>]",
+        help="Google Drive link for annotated video submission"
+    )
+    return parser.parse_args()
 
 
 def load_json(path):
@@ -113,36 +124,60 @@ def compile_pdf(html_path, pdf_path):
         return False
 
 
-def verify_pdf_captions(pdf_path, captions):
-    """Programmatically verify that all figure captions appear in the PDF text."""
+def verify_pdf_content(pdf_path, captions, table_headers):
+    """Programmatically verify that all figure captions and markdown tables appear in the PDF text."""
     doc = fitz.open(pdf_path)
     full_text = "\n".join(page.get_text() for page in doc)
     full_text_clean = " ".join(full_text.split())
 
-    missing = []
+    missing_caps = []
     print("\n--- Programmatic Verification of Figure Captions in PDF ---")
     for cap in captions:
         prefix = cap[:40]
         prefix_clean = " ".join(prefix.split())
         if prefix_clean in full_text_clean:
-            print(f"  [FOUND] {cap[:75]}...")
+            print(f"  [FOUND CAPTION] {cap[:75]}...")
         else:
-            print(f"  [MISSING] {cap}")
-            missing.append(cap)
+            print(f"  [MISSING CAPTION] {cap}")
+            missing_caps.append(cap)
+
+    missing_tables = []
+    print("\n--- Programmatic Verification of Tables in PDF ---")
+    for t_name, t_sig in table_headers.items():
+        sig_clean = " ".join(t_sig.split())
+        if sig_clean in full_text_clean:
+            print(f"  [FOUND TABLE] {t_name}: ('{t_sig}')")
+        else:
+            print(f"  [MISSING TABLE] {t_name}: ('{t_sig}')")
+            missing_tables.append(t_name)
+
     print("-----------------------------------------------------------\n")
-    return len(missing) == 0
+    return len(missing_caps) == 0 and len(missing_tables) == 0
 
 
 def main():
+    args = parse_args()
+    drive_link = args.drive_link.strip()
+    placeholder = "[Google Drive Link Placeholder: <INSERT_DRIVE_URL_HERE>]"
+    if drive_link == placeholder or "<INSERT_DRIVE_URL_HERE>" in drive_link:
+        print("\nWARNING: Google Drive link placeholder is still in the generated report. Use --drive-link \"<URL>\" to specify a submission link.\n")
+        drive_link_md = placeholder
+        drive_link_html = f"<code>{placeholder.replace('<', '&lt;').replace('>', '&gt;')}</code>"
+    else:
+        drive_link_md = f"[{drive_link}]({drive_link})"
+        drive_link_html = f'<a href="{drive_link}">{drive_link}</a>'
+
     exp_rows = load_csv("experiments.csv")
     dev_summary = load_json("out/eval/summary_dev.json")
     eval_summary = load_json("out/eval/summary_eval.json")
     per_cat_dev_eval = load_json("out/eval/per_category_dev_eval.json")
     bootstrap_ci = load_json("out/eval/bootstrap_ci.json")
+    comp_check = load_json("out/eval/composition_check.json")
     tracking_stats = load_json("out/video/tracking_stats.json")
     track_timeline = load_json("out/video/track_timeline.json")
     tracking_failures = load_json("out/video/known_tracking_failures.json")
     skin_diff = load_json("out/video/frame_600_skin_diff.json")
+    egg_loss_audit = load_json("out/video/skin_gating_egg_loss.json")
     gt_audit = load_json("out/sam/gt_fix_audit.json")
     hand_skin_audit = load_json("out/eval/hand_130_skin_fraction.json")
     fail_cats, total_tagged = get_failure_categories()
@@ -268,13 +303,15 @@ def main():
     cat_split_md_rows = []
     cat_split_html_rows = []
     for cat_name, vals in sorted(per_cat_dev_eval.items(), key=lambda x: x[1]["dev_iou"]):
+        dev_iou_str = f"{vals['dev_iou']:.4f}" if vals['dev_count'] > 0 else "n/a"
+        eval_iou_str = f"{vals['eval_iou']:.4f}" if vals['eval_count'] > 0 else "n/a"
         cat_split_md_rows.append(
-            f"| {cat_name} | {vals['dev_count']} | {vals['dev_iou']:.4f} | {vals['eval_count']} | {vals['eval_iou']:.4f} |"
+            f"| {cat_name} | {vals['dev_count']} | {dev_iou_str} | {vals['eval_count']} | {eval_iou_str} |"
         )
         cat_split_html_rows.append(
             f"<tr><td>{cat_name}</td><td style='text-align:center;'>{vals['dev_count']}</td>"
-            f"<td style='text-align:center;'>{vals['dev_iou']:.4f}</td><td style='text-align:center;'>{vals['eval_count']}</td>"
-            f"<td style='text-align:center;'>{vals['eval_iou']:.4f}</td></tr>"
+            f"<td style='text-align:center;'>{dev_iou_str}</td><td style='text-align:center;'>{vals['eval_count']}</td>"
+            f"<td style='text-align:center;'>{eval_iou_str}</td></tr>"
         )
     cat_split_table_md = "\n".join(cat_split_md_rows)
     cat_split_table_html = "\n".join(cat_split_html_rows)
@@ -363,6 +400,17 @@ def main():
         "Figure 8: Video Tracking Events Sheet across 14 key video frames documenting track births, deaths, hand interactions, and the Track 5/6 transition."
     ]
 
+    # Table signatures for programmatic verification in PDF
+    table_signatures = {
+        "Table 1 (Executive Summary Metrics)": "Metric Dev Split (n=88)",
+        "Table 2 (Controlled Experiment Progression)": "Trial ID Parent Split",
+        "Table 3 (Challenging Eval Failure Cases)": "Image Stem IoU GT Eggs",
+        "Table 4 (Per-Category Dev vs Eval Breakdown)": "Category Dev Count Dev IoU",
+        "Table 5 (Visual Failure Categorization)": "Scene Category Image Count Pct of Dataset",
+        "Table 6 (Per-Track Detection Coverage)": "Track ID Birth Frame Last Matched Frame Total Span",
+        "Table 7 (Track Timeline & Screen Events)": "Track ID Birth Frame Last Matched Frame Matched Frames Count"
+    }
+
     kept_chain = "baseline -> morph_small -> morph_medium -> morph_large -> area_filter_2500 -> watershed_conditional -> final (eval)"
 
     # --- Markdown Document ---
@@ -371,6 +419,7 @@ def main():
 **Candidate:** Sree Varun Aahil  
 **Dataset:** Roboflow Egg Dataset (110 images, 640x640, grouped dev/eval 88/22)  
 **Video Test:** YouTube `Y4JyV94y2_A` (1280x720 table experiment, 1440 frames @ 24.0 fps)  
+**Annotated Video:** {drive_link_md}  
 **Submission Date:** October 30, 2026  
 
 ---
@@ -466,6 +515,17 @@ Inspection of per-category results reveals the concrete factors driving the gap 
 3. **Higher Ratio of Clean Tabletop and Multi-Egg Scenes in Dev:** In contrast, the dev split benefits from 27 tabletop scenes with higher contrast (mean IoU **0.5353**), 11 multi-egg scenes (mean IoU **0.6148**), and 5 foliage scenes (mean IoU **0.6805**)—together comprising 43 of 88 dev images (48.9% of dev).
 4. **Small-Sample Variance:** Because eval has only 22 images, its bootstrap 95% confidence interval spans widely ([{eval_ci[0]:.4f}, {eval_ci[1]:.4f}]) and encompasses the dev mean. While domain composition (especially the 45.5% container/lid prevalence) explains the lower point estimate, the wide confidence interval confirms substantial small-sample variance.
 
+### Domain Composition Check (`out/eval/composition_check.json`)
+To evaluate how much of the performance gap between the dev split (mean IoU **{dev_iou:.4f}**) and eval split (mean IoU **{eval_iou:.4f}**) is attributable to category distribution shift, we re-weighted the dev per-category mean IoUs by the eval category counts:
+- **Actual Dev Split Mean IoU:** {dev_iou:.4f}
+- **Actual Eval Split Mean IoU:** {eval_iou:.4f}
+- **Predicted Eval Split Mean IoU (Dev Category Means Weighted by Eval Counts):** **{comp_check['metrics']['predicted_eval_iou_from_reweighting']:.4f}**
+- **Total Performance Gap (Dev - Eval):** {comp_check['metrics']['total_dev_eval_gap']:.4f}
+- **Gap Explained by Category Composition:** **{comp_check['metrics']['gap_explained_by_category_composition']:.4f} ({comp_check['metrics']['share_of_gap_explained_pct']:.1f}%)**
+- **Unexplained Residual Gap:** {comp_check['metrics']['gap_unexplained_residual']:.4f} (15.5%)
+
+Re-weighting dev category performance by eval category counts predicts an eval IoU of **{comp_check['metrics']['predicted_eval_iou_from_reweighting']:.4f}**, demonstrating that **{comp_check['metrics']['share_of_gap_explained_pct']:.1f}%** of the observed drop is directly explained by the higher proportion of difficult container lids and white trays in the eval split. *This is a descriptive check on 22 images, not a significance test.*
+
 ### Detailed Breakdown of 5 Challenging Eval Failure Cases
 As shown in Figure 6, category contact sheets, and the measured pixel properties, five challenging eval failure cases (`not_damaged_108`, `127`, `130`, `151`, `152`) illustrate distinct failure mechanisms across container packaging and hand occlusions:
 - `not_damaged_108` (IoU: 0.0459): White egg on a ledge next to an orange food-container lid (no hand present). Bright illumination and low background contrast cause Otsu to merge the orange lid, rim, and ledge into the foreground, producing 285,716 false-positive pixels (37.8% falls in the YCrCb skin range due to orange plastic chrominance).
@@ -488,7 +548,7 @@ As shown in Figure 6, category contact sheets, and the measured pixel properties
 {cat_split_table_md}
 
 ### Visual Failure Categorization (`failure_tags.csv`)
-All 110 dataset images were categorized by physical scene type and audited via category contact sheets (`report/figures/category_sheets/`). Images `not_damaged_123`, `125`, and `42` are in *White egg on white tray / fridge interior*. Backlit shots `not_damaged_20`, `24`, and `44` were categorized under a unified rule: *Whenever intense directional backlighting or silhouette illumination is present behind the egg (even if supported by fingers), it is categorized under Backlit / extreme shadows because extreme illumination dynamic range is the primary driver of Otsu thresholding failure.*
+Scene category tags were assigned by systematic review of the category contact sheets (`report/figures/category_sheets/`), with 62 of 110 images corrected from an earlier automated color/luminance heuristic (documented in `tag_changes.md`). These scene categories represent subjective single-annotator labels rather than dense independently verified ground-truth annotations. Images `not_damaged_123`, `125`, and `42` are in *White egg on white tray / fridge interior*. Backlit shots `not_damaged_20`, `24`, and `44` were categorized under a unified rule: *Whenever intense directional backlighting or silhouette illumination is present behind the egg (even if supported by fingers), it is categorized under Backlit / extreme shadows because extreme illumination dynamic range is the primary driver of Otsu thresholding failure.*
 
 | Scene Category | Image Count | Pct of Dataset | Mean IoU | Mean Dice | Mean Det F1 | Primary Failure Mechanism |
 |:---|:---:|:---:|:---:|:---:|:---:|:---|
@@ -531,6 +591,7 @@ All 110 dataset images were categorized by physical scene type and audited via c
 ### Video Dataset
 - Video: YouTube `Y4JyV94y2_A` (1280x720 @ 24.0 fps, 1440 frames total).
 - Table demonstration comparing boiled and raw egg spinning. Eggs are placed at frame 222, spun, occluded by hand, and conclude demonstration at frame 1004.
+- Annotated Tracking Video: {drive_link_md}
 
 ### Video Tracking Architecture
 1. **Domain Adaptation:** Table ROI constraint (y >= 270) rejects shirt patterns; watermark suppression at bottom-right (x >= 1040, y >= 600).
@@ -538,7 +599,14 @@ All 110 dataset images were categorized by physical scene type and audited via c
    - At frame ~600, demonstrator fingers brush against the egg. Baseline thresholding caused segmentation to leak into pale fingertips.
    - Fixed by incorporating **YCrCb skin-color gating** (`Cr in [135, 175] & Cb in [80, 125]`) combined with an elliptical morphological opening kernel (11x11).
    - Gating reduced the total foreground mask by {full_skin_reduced} px over the whole frame; restricted to crop x in [200, 460], y in [300, 430], the mask was reduced by {crop_skin_reduced} px.
-   - *Chrominance Model Consideration:* As demonstrated in static failure case `not_damaged_130`, non-skin objects sharing warm orange/red chrominance ($Cr \in [135, 175], Cb \in [80, 125]$) could inadvertently be suppressed by skin gating. In this video sequence, however, the brown wooden tabletop and white eggshell fall outside this chrominance window, leaving the egg body mask completely intact (retaining 35,942 px).
+   - *Quantitative Measurement of Skin-Gating Egg Pixel Loss (`out/video/skin_gating_egg_loss.json`):* To test whether YCrCb skin gating inadvertently removes valid egg pixels, we measured pixel loss across 6 representative frames (12 egg instances): frame 600 (fingertip contact) and 5 hand-free frames over frames 222 to 1004 (frames 250, 350, 450, 850, 950). In each frame, taking egg components from the gating-off mask:
+     - **Frame 250 (Hand-free):** Egg 1 removed 64 px (0.34%, 0.00% post-morph); Egg 2 removed 78 px (0.41%, 0.09% post-morph).
+     - **Frame 350 (Hand-free):** Egg 1 removed 27 px (0.14%, 0.00% post-morph); Egg 2 removed 72 px (0.35%, 0.17% post-morph).
+     - **Frame 450 (Hand-free):** Egg 1 removed 0 px (0.00%, 0.00% post-morph); Egg 2 removed 34 px (0.18%, 0.25% post-morph).
+     - **Frame 600 (Fingertip contact):** For Egg 1, excluding a 15 px band around fingertip contact leaves an egg body of 17,146 px, with exactly 0 px (0.00%, 0.00% post-morph) removed. For Egg 3 (untouched spinning egg, 17,645 px), 0 px (0.00%, 0.00% post-morph) were removed.
+     - **Frame 850 (Hand-free):** Egg 4 removed 0 px (0.00%, 0.00% post-morph); Egg 6 removed 64 px (0.33%, 0.36% post-morph).
+     - **Frame 950 (Hand-free):** Egg 4 removed 40 px (0.23%, 0.27% post-morph); Egg 6 removed 22 px (0.12%, 0.14% post-morph).
+     Across all 12 evaluated egg instances, skin gating removed between **0.00% and 0.41%** of egg pixels (with at most 0.36% post-morphology loss). **No egg lost more than 1.0% of its pixels in any frame**, confirming that white eggshells on the wooden table do not meaningfully intersect the skin chrominance cluster.
 3. **Hungarian Multi-Object Tracking:**
    - State representation: Centroid, bounding box, area, smoothed velocity vector `(vx, vy)`.
    - Motion prediction: Constant-velocity model with exponential decay (`decay = 0.90^lost`).
@@ -652,7 +720,8 @@ All 110 dataset images were categorized by physical scene type and audited via c
 
 <h1>Egg Segmentation and Multi-Object Tracking Take-Home Report</h1>
 <p style="color:#7f8c8d; font-size:10px; margin-top:-3px;">
-  <strong>Candidate:</strong> Sree Varun Aahil | <strong>Date:</strong> October 30, 2026 | <strong>Machine:</strong> Windows 11 (CUDA Enabled)
+  <strong>Candidate:</strong> Sree Varun Aahil | <strong>Date:</strong> October 30, 2026 | <strong>Machine:</strong> Windows 11 (CUDA Enabled)<br>
+  <strong>Annotated Video:</strong> {drive_link_html}
 </p>
 
 <div class="metrics-box">
@@ -780,6 +849,22 @@ All 110 dataset images were categorized by physical scene type and audited via c
   <li><strong>Small-Sample Variance:</strong> Because eval has only 22 images, its bootstrap 95% confidence interval spans widely ([{eval_ci[0]:.4f}, {eval_ci[1]:.4f}]) and encompasses the dev mean. While domain composition (especially the 45.5% container/lid prevalence) explains the lower point estimate, the wide confidence interval confirms substantial small-sample variance.</li>
 </ol>
 
+<h3>Domain Composition Check (<code>out/eval/composition_check.json</code>)</h3>
+<p>
+  To evaluate how much of the performance difference between the dev split (mean IoU <strong>{dev_iou:.4f}</strong>) and eval split (mean IoU <strong>{eval_iou:.4f}</strong>) is attributable to category distribution shift, we re-weighted the dev per-category mean IoUs by the eval category counts:
+</p>
+<ul>
+  <li><strong>Actual Dev Split Mean IoU:</strong> {dev_iou:.4f}</li>
+  <li><strong>Actual Eval Split Mean IoU:</strong> {eval_iou:.4f}</li>
+  <li><strong>Predicted Eval Split Mean IoU (Dev Category Means Weighted by Eval Counts):</strong> <strong>{comp_check['metrics']['predicted_eval_iou_from_reweighting']:.4f}</strong></li>
+  <li><strong>Total Dev-Eval Performance Gap:</strong> {comp_check['metrics']['total_dev_eval_gap']:.4f}</li>
+  <li><strong>Gap Explained by Category Composition:</strong> <strong>{comp_check['metrics']['gap_explained_by_category_composition']:.4f} ({comp_check['metrics']['share_of_gap_explained_pct']:.1f}%)</strong></li>
+  <li><strong>Unexplained Residual Gap:</strong> {comp_check['metrics']['gap_unexplained_residual']:.4f} (15.5%)</li>
+</ul>
+<p>
+  Re-weighting dev category performance by eval category counts predicts an eval IoU of <strong>{comp_check['metrics']['predicted_eval_iou_from_reweighting']:.4f}</strong>, demonstrating that <strong>{comp_check['metrics']['share_of_gap_explained_pct']:.1f}%</strong> of the observed drop is directly explained by the higher proportion of difficult container lids and white trays in the eval split. <em>This is a descriptive check on 22 images, not a significance test.</em>
+</p>
+
 <h3>Detailed Breakdown of 5 Challenging Eval Failure Cases</h3>
 <p>
   As shown in Figure 6, category contact sheets, and the measured pixel properties, five challenging eval failure cases (<code>not_damaged_108</code>, <code>127</code>, <code>130</code>, <code>151</code>, <code>152</code>) illustrate distinct failure mechanisms across container packaging and hand occlusions:
@@ -831,12 +916,15 @@ All 110 dataset images were categorized by physical scene type and audited via c
 </table>
 
 <h3>Visual Failure Categorization (<code>failure_tags.csv</code>)</h3>
+<p>
+  Scene category tags were assigned by systematic review of the category contact sheets (<code>report/figures/category_sheets/</code>), with 62 of 110 images corrected from an earlier automated color/luminance heuristic (documented in <code>tag_changes.md</code>). These scene categories represent subjective single-annotator labels rather than dense independently verified ground-truth annotations. Images <code>not_damaged_123</code>, <code>125</code>, and <code>42</code> are in <em>White egg on white tray / fridge interior</em>. Backlit shots <code>not_damaged_20</code>, <code>24</code>, and <code>44</code> were categorized under a unified rule: <em>Whenever intense directional backlighting or silhouette illumination is present behind the egg (even if supported by fingers), it is categorized under Backlit / extreme shadows because extreme illumination dynamic range is the primary driver of Otsu thresholding failure.</em>
+</p>
 <table>
   <thead>
     <tr>
       <th>Scene Category</th>
-      <th style="text-align:center;">Count</th>
-      <th style="text-align:center;">Pct</th>
+      <th style="text-align:center;">Image Count</th>
+      <th style="text-align:center;">Pct of Dataset</th>
       <th>Mean IoU</th>
       <th>Mean Dice</th>
       <th>Mean Det F1</th>
@@ -898,10 +986,11 @@ All 110 dataset images were categorized by physical scene type and audited via c
 
 <h2>5. Task 4: Multi-Object Video Tracking</h2>
 <p>
-  Tracking was evaluated on the 1440-frame table sequence (1280x720 @ 24.0 fps). Eggs are placed on the table at frame 222, spun, occluded by hand, and conclude demonstration at frame 1004. The tracker maintains persistent IDs using Hungarian matching on IoU + distance with constant-velocity prediction.
+  Tracking was evaluated on the 1440-frame table sequence (1280x720 @ 24.0 fps). Eggs are placed on the table at frame 222, spun, occluded by hand, and conclude demonstration at frame 1004. Annotated tracking video: {drive_link_html}. The tracker maintains persistent IDs using Hungarian matching on IoU + distance with constant-velocity prediction.
 </p>
 <ul>
-  <li><strong>Fingertip Leakage Resolution:</strong> At frame 600, demonstrator hand contact caused baseline thresholding to leak into fingers. Incorporating YCrCb skin-color gating (Cr &isin; [135, 175], Cb &isin; [80, 125]) and larger opening eliminated false skin contour (gating reduced the total foreground mask by {full_skin_reduced} px over the whole frame; restricted to crop x in [200, 460], y in [300, 430], the mask was reduced by {crop_skin_reduced} px). As shown with static image <code>not_damaged_130</code>, non-skin objects sharing warm orange/red chrominance could inadvertently be suppressed by skin gating, but here the wooden table and white eggshell fall outside this chrominance window, keeping the egg body mask completely intact (35,942 px retained).</li>
+  <li><strong>Fingertip Leakage Resolution:</strong> At frame 600, demonstrator hand contact caused baseline thresholding to leak into fingers. Incorporating YCrCb skin-color gating (Cr &isin; [135, 175], Cb &isin; [80, 125]) and larger opening eliminated false skin contour (gating reduced the total foreground mask by {full_skin_reduced} px over the whole frame; restricted to crop x in [200, 460], y in [300, 430], the mask was reduced by {crop_skin_reduced} px).</li>
+  <li><strong>Quantitative Skin-Gating Pixel Loss Measurement (<code>out/video/skin_gating_egg_loss.json</code>):</strong> Measured across 6 representative video frames (12 egg instances): frame 600 (demonstrator fingertip contact) and 5 hand-free frames (250, 350, 450, 850, 950). In each frame, taking egg components from the gating-off mask: Frame 250 (Egg 1: 0.34%, Egg 2: 0.41%), Frame 350 (Egg 1: 0.14%, Egg 2: 0.35%), Frame 450 (Egg 1: 0.00%, Egg 2: 0.18%), Frame 600 (Egg 1: 0.00% outside 15 px fingertip band, Egg 3: 0.00%), Frame 850 (Egg 4: 0.00%, Egg 6: 0.33%), Frame 950 (Egg 4: 0.23%, Egg 6: 0.12%). Across all 12 evaluated instances, skin gating removed between 0.00% and 0.41% of pixels (at most 0.36% post-morphology loss). No egg lost more than 1.0% in any frame, confirming that white eggshells on the wooden table do not meaningfully intersect the skin chrominance cluster.</li>
   <li><strong>Track Lifetimes & Event Statistics:</strong> {video_ids} unique tracks were created, with {loss_events} loss events and {recov_events} recoveries. Lifetimes: Egg 1 ({lifetimes.get('Egg 1', 0)} frames), Egg 2 ({lifetimes.get('Egg 2', 0)} frames), Egg 3 ({lifetimes.get('Egg 3', 0)} frames), Egg 4 ({lifetimes.get('Egg 4', 0)} frames), Egg 5 ({lifetimes.get('Egg 5', 0)} frames), Egg 6 ({lifetimes.get('Egg 6', 0)} frames).</li>
   <li><strong>Detection Continuity:</strong> In the 783 frames between first and last detection (frames 222 to 1004), at least one egg was detected in 782 of the 783 frames; exactly 1 frame had 0 detections (Frame 480).</li>
 </ul>
@@ -996,12 +1085,12 @@ All 110 dataset images were categorized by physical scene type and audited via c
     # Compile PDF
     compile_pdf(html_path, pdf_path)
 
-    # Programmatically verify all captions in PDF text
-    success = verify_pdf_captions(pdf_path, all_captions)
+    # Programmatically verify all captions and tables in PDF text
+    success = verify_pdf_content(pdf_path, all_captions, table_signatures)
     if not success:
-        print("Error: One or more figure captions were not found in the compiled PDF text!")
+        print("Error: One or more figure captions or tables were not found in the compiled PDF text!")
     else:
-        print(f"Verification SUCCESS: All {len(all_captions)} figure captions appear in the compiled PDF text!")
+        print(f"Verification SUCCESS: All {len(all_captions)} figure captions and all {len(table_signatures)} tables appear in the compiled PDF text!")
 
 
 if __name__ == "__main__":

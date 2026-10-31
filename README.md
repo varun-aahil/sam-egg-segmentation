@@ -98,7 +98,11 @@ python src/video_track.py --video video/eggs.mp4 --out out/video
 ### Task 5: Generate Reproducible Report
 Compiles all dynamic metrics, tables, failure breakdowns, and tracking figures into `report/report.md`, `report/report.html`, and `report/report.pdf`:
 ```bash
+# Generate report (default keeps the Google Drive placeholder)
 python src/generate_report.py
+
+# Or specify a submission Google Drive URL for the annotated video
+python src/generate_report.py --drive-link "<URL>"
 ```
 
 ---
