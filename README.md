@@ -121,4 +121,4 @@ python src/generate_report.py --drive-link "<URL>"
 
 ## 4. AI Assistance Disclosure
 
-I used AI to write documentt and run the code in this repository. SAM (`vit_b`) was used to generate ground-truth masks from human-clicked point and box prompts. Every number, metric, and count in the report comes directly from running the code in this repository. I thoroughly reviewed the results, verified the findings, and can explain all methods.
+AI was used to write documentation and multiple function in this repository. SAM (`vit_b`) was used to generate ground-truth masks from human-clicked point and box prompts. Every number, metric, and count in the report comes directly from running the code in this repository. I thoroughly reviewed the results, verified the findings, and can explain all methods.
