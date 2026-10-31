@@ -1,9 +1,8 @@
-
 WARNING: Google Drive link placeholder is still in the generated report. Use --drive-link "<URL>" to specify a submission link.
 
 Generated Markdown report: report\report.md
 Generated HTML report: report\report.html
-Successfully compiled PDF report to C:\Users\Varun\OneDrive\Desktop\sam-egg-segmentation\report\report.pdf (8612.4 KB)
+Successfully compiled PDF report to C:\Users\Varun\OneDrive\Desktop\sam-egg-segmentation\report\report.pdf (8598.5 KB)
 
 --- Programmatic Verification of Figure Captions in PDF ---
   [FOUND CAPTION] Figure 1a: Pixel IoU distribution on Dev split (n=88)....

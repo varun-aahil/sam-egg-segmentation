@@ -26,9 +26,9 @@ All numbers below were measured directly from the execution of the scripts in th
 | **Count Error (Abs Mean)** | 2.20 | 1.77 | — |
 | **Split Leakage Audit** | 0 straddling groups | 0/22 affected | 109 groups (108 singletons, 1 dev pair) |
 | **Video Processing FPS** | — | — | **24.0 FPS** (1440 frames @ 1280x720) |
-| **Video Unique Tracks** | — | — | **6 unique tracks** (5 valid if length &ge; 5) |
-| **Video Track Lifetimes** | — | — | Egg 1: 529, Egg 2: 282, Egg 3: 101, Egg 4: 269, Egg 5: 3, Egg 6: 190 |
-| **Video Loss & Recovery Events** | — | — | **18 loss events, 12 recoveries** |
+| **Video Unique Tracks** | — | — | **2 unique tracks** (1:1 mapping with the 2 real physical eggs) |
+| **Video Track Lifetimes** | — | — | Egg 1: 721 frames, Egg 2: 652 frames |
+| **Video Loss & Recovery Events** | — | — | **15 loss events, 15 recoveries** |
 | **Detection Continuity (F#222–1004)** | — | — | **782 of 783 frames detected** (Frame 480 had 0 detections) |
 | **Hand Occlusion Fix (F#600)** | — | — | Gating reduced total mask by 2,296 px (1,304 px in crop x in [200, 460], y in [300, 430]) |
 
@@ -196,12 +196,12 @@ Rendering annotated video to out\video\tracked.mp4...
   Frame 150/1440: active tracks = [], unique IDs so far = 0
   Frame 300/1440: active tracks = [1, 2], unique IDs so far = 2
   Frame 450/1440: active tracks = [1, 2], unique IDs so far = 2
-  Frame 600/1440: active tracks = [1, 3], unique IDs so far = 3
-  Frame 750/1440: active tracks = [1, 4], unique IDs so far = 4
-  Frame 900/1440: active tracks = [4, 6], unique IDs so far = 6
-  Frame 1050/1440: active tracks = [], unique IDs so far = 6
-  Frame 1200/1440: active tracks = [], unique IDs so far = 6
-  Frame 1350/1440: active tracks = [], unique IDs so far = 6
+  Frame 600/1440: active tracks = [1, 2], unique IDs so far = 2
+  Frame 750/1440: active tracks = [1, 2], unique IDs so far = 2
+  Frame 900/1440: active tracks = [1, 2], unique IDs so far = 2
+  Frame 1050/1440: active tracks = [], unique IDs so far = 2
+  Frame 1200/1440: active tracks = [], unique IDs so far = 2
+  Frame 1350/1440: active tracks = [], unique IDs so far = 2
 Saved tracking contact sheet to out\video\tracking_contact_sheet.jpg
 
 Tracking complete: 1440 frames rendered to out\video\tracked.mp4
@@ -213,34 +213,22 @@ Statistics: out\video\tracking_stats.json
   "processed_frames": 1440,
   "video_fps": 24.0,
   "video_resolution": "1280x720",
-  "unique_ids_created": 6,
+  "unique_ids_created": 2,
   "unique_id_list": [
     1,
-    2,
-    3,
-    4,
-    5,
-    6
+    2
   ],
   "id_switches": 0,
   "birth_frames": {
     "1": 222,
-    "2": 222,
-    "3": 546,
-    "4": 689,
-    "5": 800,
-    "6": 810
+    "2": 222
   },
   "track_lifetimes": {
-    "Egg 1": 529,
-    "Egg 2": 282,
-    "Egg 3": 101,
-    "Egg 4": 269,
-    "Egg 5": 3,
-    "Egg 6": 190
+    "Egg 1": 721,
+    "Egg 2": 652
   },
-  "total_loss_events": 18,
-  "total_recovery_events": 12,
+  "total_loss_events": 15,
+  "total_recovery_events": 15,
   "frames_without_detection": 658,
   "frames_with_detection": 782
 }
@@ -256,7 +244,7 @@ WARNING: Google Drive link placeholder is still in the generated report. Use --d
 
 Generated Markdown report: report\report.md
 Generated HTML report: report\report.html
-Successfully compiled PDF report to C:\Users\Varun\OneDrive\Desktop\sam-egg-segmentation\report\report.pdf (8612.4 KB)
+Successfully compiled PDF report to C:\Users\Varun\OneDrive\Desktop\sam-egg-segmentation\report\report.pdf (8598.5 KB)
 
 --- Programmatic Verification of Figure Captions in PDF ---
   [FOUND CAPTION] Figure 1a: Pixel IoU distribution on Dev split (n=88)....
@@ -351,7 +339,7 @@ Conclusion: ZERO split leakage detected. Eval metrics are completely uncompromis
 | **Classical Final Masks**| `out/classical/final/{dev,eval}/masks/*.png` | Output masks from the frozen classical algorithm. |
 | **Tracking Log** | `out/video/tracking_log.csv` | Frame-by-frame tracked egg coordinates, areas, velocities, states (sampled every 10th frame). |
 | **Tracking Statistics**| `out/video/tracking_stats.json` | Total frames, active frames, track lifetimes, loss/recovery counts. |
-| **Track Timeline** | `out/video/track_timeline.json` | Exact birth, death, lifetime, gap lists, and visual verification notes for all 6 tracks. |
+| **Track Timeline** | `out/video/track_timeline.json` | Exact birth, death, lifetime, gap lists, and visual verification notes for both persistent tracks (Egg 1 and Egg 2). |
 | **Tracking Failures Audit** | `out/video/known_tracking_failures.json` | Frame 480 analysis, 222-1004 audit, and 658-frame zero-detection breakdown. |
 | **Skin Diff Audit** | `out/video/frame_600_skin_diff.json` | Measured pixel counts with skin gating off vs on at Frame 600 (full frame and crop). |
 | **Skin Gating Egg Loss**| `out/video/skin_gating_egg_loss.json` | Quantitative egg pixel loss measurement across 6 video frames (12 instances; all loss <= 0.41%). |
@@ -412,3 +400,4 @@ Reviewers appreciate transparency. Here is what was NOT done or where shortcuts 
 6. **Slim Review Package Omissions:** The slim archive (`sam-egg-segmentation-slim.zip`, <25 MB) leaves out the raw dataset images (`data/`), all visual overlay folders (`*/overlays`), contact sheet images, video files (`*.mp4`), intermediate classical trial masks, SAM model weights (`weights/`), and virtual environment (`.venv/`).
 7. **Tag Provenance:** Scene category tags were assigned by systematic review of the category contact sheets (`report/figures/category_sheets/`), with 62 of 110 images corrected from an earlier automated heuristic (see `tag_changes.md`). These scene categories represent subjective single-annotator labels rather than dense independently verified ground truth.
 8. **Domain Composition Check:** Re-weighting dev category mean IoUs by eval category counts predicts an eval IoU of 0.3324 (explaining 84.5% of the 0.0821 dev-eval gap). *This is a descriptive check on 22 images, not a significance test.*
+9. **Video Tracking Identity Persistence & Re-ID:** The video contains 2 physical eggs. By extending track retention memory (`max_lost = 300` frames / 12.5 s) with velocity decay ($0.90^{\text{lost}}$), dynamic re-ID expansion ($R(\text{lost}) = \min(900\text{ px}, 150\text{ px} + 20\text{ px/frame} \cdot \text{lost})$), duplicate track suppression (< 100 px), and candidate confirmation filtering ($N \ge 4$), the tracker resolves ID fragmentation from 6 IDs down to exactly 2 persistent unique tracks (Egg 1: 721 frames, Egg 2: 652 frames) with 0 identity switches against manual ground truth. Relaxing the global solidity filter to 0.75 recovered frame 480 but introduced 53 false-positive detections (frames 244-298); hence the 0.78 convexity threshold is maintained.
