@@ -1,9 +1,9 @@
 # Egg Segmentation and Multi-Object Tracking Take-Home Report
 
-**Candidate:** Sree Varun Aahil  
+**Candidate:** K. Sree Varun Aahil  
 **Dataset:** Roboflow Egg Dataset (110 images, 640x640, grouped dev/eval 88/22)  
 **Video Test:** YouTube `Y4JyV94y2_A` (1280x720 table experiment, 1440 frames @ 24.0 fps)  
-**Annotated Video:** [Google Drive Link Placeholder: <INSERT_DRIVE_URL_HERE>]  
+**Annotated Video:** [https://drive.google.com/file/d/1mCqreRT5OFuGm49fvgxRKH-TVVOL1kWt/view?usp=sharing](https://drive.google.com/file/d/1mCqreRT5OFuGm49fvgxRKH-TVVOL1kWt/view?usp=sharing)  
 **Submission Date:** October 30, 2026  
 
 ---
@@ -211,7 +211,7 @@ Scene category tags were assigned by systematic review of the category contact s
 ### Video Dataset
 - Video: YouTube `Y4JyV94y2_A` (1280x720 @ 24.0 fps, 1440 frames total).
 - Table demonstration comparing boiled and raw egg spinning. Eggs are placed at frame 222, spun, occluded by hand, and conclude demonstration at frame 1004.
-- Annotated Tracking Video: [Google Drive Link Placeholder: <INSERT_DRIVE_URL_HERE>]
+- Annotated Tracking Video: [https://drive.google.com/file/d/1mCqreRT5OFuGm49fvgxRKH-TVVOL1kWt/view?usp=sharing](https://drive.google.com/file/d/1mCqreRT5OFuGm49fvgxRKH-TVVOL1kWt/view?usp=sharing)
 
 ### Video Tracking Architecture
 1. **Domain Adaptation:** Table ROI constraint (y >= 270) rejects shirt patterns; watermark suppression at bottom-right (x >= 1040, y >= 600).
@@ -290,3 +290,9 @@ Scene category tags were assigned by systematic review of the category contact s
 4. **Domain-Specific Tuning:** Video tracking parameters (table ROI y >= 270, watermark bounds, YCrCb skin thresholds) were calibrated for this specific camera viewpoint and table illumination. Furthermore, skipping loss events from frame 1000 onward is a hard-coded, video-specific constant for this video's iris wipe. Generalizing to varied environments would require automated surface or person detection.
 5. **Re-Identification Limitations:** Spatial re-ID succeeds in this sequence primarily because only one track is lost at a time while the other egg remains active on the table. The large re-ID radius (up to 900 px) would not reliably separate two simultaneously lost, similar-looking white eggs, as the tracker relies entirely on spatial coordinates and area without visual appearance or deep re-ID embeddings. Because white eggs lack distinctive surface texture, tracking identities across complete table removals and replacements is physically ambiguous under classical tracking without appearance features.
 6. **Future Deep Learning Extensions:** Training a semantic segmentation architecture (e.g. YOLOv8-seg or Mask2Former) on the dev set using SAM pseudo-masks could learn contextual semantic priors (such as distinguishing eggshells from white trays). Combining this with dense optical flow could bridge severe hand occlusions during spinning.
+
+---
+
+## 7. AI Assistance Disclosure
+
+The author of this repository and project is K. Sree Varun Aahil. Claude (Anthropic) was used for planning, reviewing outputs, and drafting prompts. A Gemini-based coding agent in Antigravity was used to write and run the code in this repository. SAM (`vit_b`) was used to generate ground-truth masks from human-clicked point and box prompts. Every number, metric, and count in the report comes directly from running the code in this repository. The author thoroughly reviewed the results, verified the findings, and can explain all methods.

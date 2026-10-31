@@ -1,0 +1,42 @@
+Loaded 110 dataset images from data
+
+Computed 109 transitive groups from 110 images (phash <= 8 or same source name)
+
+Read splits.json: dev=88, eval=22
+
+
+
+================================================================================
+
+SPLIT LEAKAGE AUDIT RESULTS:
+
+================================================================================
+
+[PASS] ZERO groups straddle dev and eval splits!
+
+Total groups: 109
+
+Groups with > 1 image: 1
+
+  Group 1 (size 2, allocated entirely to dev): ['not_damaged_78_jpg.rf.d3a6e8624d192abc58ff7df9d5781bb5.jpg', 'not_damaged_27_jpg.rf.9eabbf76d6ac2d4caccb38b11e0d28ad.jpg']
+
+Affected eval images: 0 / 22
+
+
+
+--------------------------------------------------------------------------------
+
+EVAL METRIC COMPARISON (FULL vs LEAK-FREE EVAL):
+
+--------------------------------------------------------------------------------
+
+Split                        N   Mean IoU   Mean Dice  Mean Det F1
+
+--------------------------------------------------------------------------------
+
+Full Eval Split             22     0.3196      0.4239       0.3206
+
+Leak-Free Eval Subset       22     0.3196      0.4239       0.3206
+
+--------------------------------------------------------------------------------
+

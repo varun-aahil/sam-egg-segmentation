@@ -1,0 +1,58 @@
+{
+  "Tabletop / high-contrast background": {
+    "dev_count": 27,
+    "dev_iou": 0.5352888888888889,
+    "eval_count": 4,
+    "eval_iou": 0.6996500000000001,
+    "primary_failure_mechanism": "Tabletop grain, hearth ash, patterned cloth tablecloths, or laptop keyboard keys introduce background clutter."
+  },
+  "White egg on white tray / fridge interior": {
+    "dev_count": 8,
+    "dev_iou": 0.1003125,
+    "eval_count": 2,
+    "eval_iou": 0.0562,
+    "primary_failure_mechanism": "Near-zero photometric contrast between white eggshell and white plastic tray or paper bag; Otsu floods background."
+  },
+  "Egg on container / lid / plain surface": {
+    "dev_count": 20,
+    "dev_iou": 0.31612999999999997,
+    "eval_count": 10,
+    "eval_iou": 0.21904999999999997,
+    "primary_failure_mechanism": "Plastic food-container lids, bowls, metal pans, or plain packaging surfaces create perimeter reflections and false components."
+  },
+  "Hand holding egg / fingers occluding": {
+    "dev_count": 9,
+    "dev_iou": 0.2822,
+    "eval_count": 2,
+    "eval_iou": 0.10980000000000001,
+    "primary_failure_mechanism": "Fingers or palm occlude egg perimeter; skin tone overlaps shadow gradient, distending contour into hand."
+  },
+  "Egg in boiling water / submerged": {
+    "dev_count": 5,
+    "dev_iou": 0.20987999999999998,
+    "eval_count": 3,
+    "eval_iou": 0.30716666666666664,
+    "primary_failure_mechanism": "Bubbling cavitation, water refraction, and dark pot rims break convex boundary and flood liquid."
+  },
+  "Multiple touching eggs": {
+    "dev_count": 11,
+    "dev_iou": 0.6148454545454546,
+    "eval_count": 1,
+    "eval_iou": 0.7893,
+    "primary_failure_mechanism": "Touching or adjacent instances share continuous boundary; requires distance watershed marker separation."
+  },
+  "Foliage / herbs in background (specular highlights)": {
+    "dev_count": 5,
+    "dev_iou": 0.6804800000000001,
+    "eval_count": 0,
+    "eval_iou": 0.0,
+    "primary_failure_mechanism": "Egg contrasts against dark foliage in grayscale; specular leaf reflections create occasional false blobs."
+  },
+  "Backlit / extreme shadows": {
+    "dev_count": 3,
+    "dev_iou": 0.0070999999999999995,
+    "eval_count": 0,
+    "eval_iou": 0.0,
+    "primary_failure_mechanism": "High-intensity directional backlight causes glowing core while shell perimeter falls into dark silhouette."
+  }
+}

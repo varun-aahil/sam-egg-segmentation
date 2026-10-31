@@ -1,0 +1,13 @@
+{
+  "frame": 600,
+  "full_frame": {
+    "skin_gating_off_mask_pixels": 38238,
+    "skin_gating_on_mask_pixels": 35942,
+    "pixels_reduced": 2296
+  },
+  "crop_x200_460_y300_430": {
+    "skin_gating_off_mask_pixels": 8695,
+    "skin_gating_on_mask_pixels": 7391,
+    "pixels_reduced": 1304
+  }
+}

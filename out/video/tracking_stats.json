@@ -1,0 +1,24 @@
+{
+  "total_video_frames": 1440,
+  "processed_frames": 1440,
+  "video_fps": 24.0,
+  "video_resolution": "1280x720",
+  "unique_ids_created": 2,
+  "unique_id_list": [
+    1,
+    2
+  ],
+  "id_switches": 0,
+  "birth_frames": {
+    "1": 222,
+    "2": 222
+  },
+  "track_lifetimes": {
+    "Egg 1": 721,
+    "Egg 2": 652
+  },
+  "total_loss_events": 15,
+  "total_recovery_events": 15,
+  "frames_without_detection": 658,
+  "frames_with_detection": 782
+}

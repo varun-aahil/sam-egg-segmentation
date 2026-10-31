@@ -1,0 +1,62 @@
+{
+  "image_id": "not_damaged_130",
+  "filename": "valid/egg/not_damaged_130_jpg.rf.7289d26d022f33aa74b3517f40d6a127.jpg",
+  "sam_area_px": 47806,
+  "pred_area_px": 109258,
+  "false_positive_px": 62367,
+  "skin_fp_px": 57392,
+  "skin_fraction_in_fp": 0.9202,
+  "skin_fraction_pct": "92.02%",
+  "all_eval_hand_stats": {
+    "108": {
+      "image": "train/egg/not_damaged_108_jpg.rf.de0bd2447ade8d891625ac0dd055667a.jpg",
+      "iou": 0.0459,
+      "dice": 0.0878,
+      "sam_area": 14128,
+      "pred_area": 299478,
+      "fp_count": 285716,
+      "skin_in_fp": 108122,
+      "skin_fraction": 0.3784
+    },
+    "127": {
+      "image": "train/egg/not_damaged_127_jpg.rf.3a541bab7c9e2c2e43c2fdbf391617b5.jpg",
+      "iou": 0.0601,
+      "dice": 0.1134,
+      "sam_area": 17574,
+      "pred_area": 283983,
+      "fp_count": 266889,
+      "skin_in_fp": 49605,
+      "skin_fraction": 0.1859
+    },
+    "130": {
+      "image": "valid/egg/not_damaged_130_jpg.rf.7289d26d022f33aa74b3517f40d6a127.jpg",
+      "iou": 0.4256,
+      "dice": 0.5971,
+      "sam_area": 47806,
+      "pred_area": 109258,
+      "fp_count": 62367,
+      "skin_in_fp": 57392,
+      "skin_fraction": 0.9202
+    },
+    "151": {
+      "image": "train/egg/not_damaged_151_jpg.rf.34a8c4ae80d0863cd228120235134ae2.jpg",
+      "iou": 0.1451,
+      "dice": 0.2534,
+      "sam_area": 43992,
+      "pred_area": 262215,
+      "fp_count": 223414,
+      "skin_in_fp": 65417,
+      "skin_fraction": 0.2928
+    },
+    "152": {
+      "image": "test/egg/not_damaged_152_jpg.rf.a57edb18d395ce87e23f7abccbd1ad69.jpg",
+      "iou": 0.0745,
+      "dice": 0.1386,
+      "sam_area": 22013,
+      "pred_area": 295610,
+      "fp_count": 273597,
+      "skin_in_fp": 56531,
+      "skin_fraction": 0.2066
+    }
+  }
+}

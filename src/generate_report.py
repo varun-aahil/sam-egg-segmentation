@@ -435,7 +435,7 @@ def main():
     # --- Markdown Document ---
     md_content = f"""# Egg Segmentation and Multi-Object Tracking Take-Home Report
 
-**Candidate:** Sree Varun Aahil  
+**Candidate:** K. Sree Varun Aahil  
 **Dataset:** Roboflow Egg Dataset (110 images, 640x640, grouped dev/eval 88/22)  
 **Video Test:** YouTube `Y4JyV94y2_A` (1280x720 table experiment, 1440 frames @ 24.0 fps)  
 **Annotated Video:** {drive_link_md}  
@@ -687,6 +687,12 @@ Scene category tags were assigned by systematic review of the category contact s
 4. **Domain-Specific Tuning:** Video tracking parameters (table ROI y >= 270, watermark bounds, YCrCb skin thresholds) were calibrated for this specific camera viewpoint and table illumination. Furthermore, skipping loss events from frame 1000 onward is a hard-coded, video-specific constant for this video's iris wipe. Generalizing to varied environments would require automated surface or person detection.
 5. **Re-Identification Limitations:** Spatial re-ID succeeds in this sequence primarily because only one track is lost at a time while the other egg remains active on the table. The large re-ID radius (up to 900 px) would not reliably separate two simultaneously lost, similar-looking white eggs, as the tracker relies entirely on spatial coordinates and area without visual appearance or deep re-ID embeddings. Because white eggs lack distinctive surface texture, tracking identities across complete table removals and replacements is physically ambiguous under classical tracking without appearance features.
 6. **Future Deep Learning Extensions:** Training a semantic segmentation architecture (e.g. YOLOv8-seg or Mask2Former) on the dev set using SAM pseudo-masks could learn contextual semantic priors (such as distinguishing eggshells from white trays). Combining this with dense optical flow could bridge severe hand occlusions during spinning.
+
+---
+
+## 7. AI Assistance Disclosure
+
+The author of this repository and project is K. Sree Varun Aahil. Claude (Anthropic) was used for planning, reviewing outputs, and drafting prompts. A Gemini-based coding agent in Antigravity was used to write and run the code in this repository. SAM (`vit_b`) was used to generate ground-truth masks from human-clicked point and box prompts. Every number, metric, and count in the report comes directly from running the code in this repository. The author thoroughly reviewed the results, verified the findings, and can explain all methods.
 """
 
     # --- HTML Document (Strict Parity with Markdown) ---
@@ -737,7 +743,7 @@ Scene category tags were assigned by systematic review of the category contact s
 
 <h1>Egg Segmentation and Multi-Object Tracking Take-Home Report</h1>
 <p style="color:#7f8c8d; font-size:10px; margin-top:-3px;">
-  <strong>Candidate:</strong> Sree Varun Aahil | <strong>Date:</strong> October 30, 2026 | <strong>Machine:</strong> Windows 11 (CUDA Enabled)<br>
+  <strong>Candidate:</strong> K. Sree Varun Aahil | <strong>Date:</strong> October 30, 2026 | <strong>Machine:</strong> Windows 11 (CUDA Enabled)<br>
   <strong>Annotated Video:</strong> {drive_link_html}
 </p>
 
@@ -1089,6 +1095,11 @@ Scene category tags were assigned by systematic review of the category contact s
   <li><strong>Re-Identification Limitations:</strong> Spatial re-ID succeeds in this sequence primarily because only one track is lost at a time while the other egg remains active on the table. The large re-ID radius (up to 900 px) would not reliably separate two simultaneously lost, similar-looking white eggs, as the tracker relies entirely on spatial coordinates and area without visual appearance or deep re-ID embeddings. Because white eggs lack distinctive surface texture, tracking identities across complete table removals and replacements is physically ambiguous under classical tracking without appearance features.</li>
   <li><strong>Future Extensions:</strong> Fine-tuning a deep semantic segmentation model (e.g. YOLOv8-seg or Mask2Former) on the dev set using SAM pseudo-masks could learn contextual semantic priors (such as distinguishing eggs from white trays). Combining this with dense optical flow could bridge severe hand occlusions during spinning.</li>
 </ol>
+
+<h2>7. AI Assistance Disclosure</h2>
+<p>
+  The author of this repository and project is K. Sree Varun Aahil. Claude (Anthropic) was used for planning, reviewing outputs, and drafting prompts. A Gemini-based coding agent in Antigravity was used to write and run the code in this repository. SAM (<code>vit_b</code>) was used to generate ground-truth masks from human-clicked point and box prompts. Every number, metric, and count in the report comes directly from running the code in this repository. The author thoroughly reviewed the results, verified the findings, and can explain all methods.
+</p>
 
 </body>
 </html>

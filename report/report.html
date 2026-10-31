@@ -45,8 +45,8 @@
 
 <h1>Egg Segmentation and Multi-Object Tracking Take-Home Report</h1>
 <p style="color:#7f8c8d; font-size:10px; margin-top:-3px;">
-  <strong>Candidate:</strong> Sree Varun Aahil | <strong>Date:</strong> October 30, 2026 | <strong>Machine:</strong> Windows 11 (CUDA Enabled)<br>
-  <strong>Annotated Video:</strong> <code>[Google Drive Link Placeholder: &lt;INSERT_DRIVE_URL_HERE&gt;]</code>
+  <strong>Candidate:</strong> K. Sree Varun Aahil | <strong>Date:</strong> October 30, 2026 | <strong>Machine:</strong> Windows 11 (CUDA Enabled)<br>
+  <strong>Annotated Video:</strong> <a href="https://drive.google.com/file/d/1mCqreRT5OFuGm49fvgxRKH-TVVOL1kWt/view?usp=sharing">https://drive.google.com/file/d/1mCqreRT5OFuGm49fvgxRKH-TVVOL1kWt/view?usp=sharing</a>
 </p>
 
 <div class="metrics-box">
@@ -347,7 +347,7 @@
 
 <h2>5. Task 4: Multi-Object Video Tracking</h2>
 <p>
-  Tracking was evaluated on the 1440-frame table sequence (1280x720 @ 24.0 fps). Eggs are placed on the table at frame 222, spun, occluded by hand, and conclude demonstration at frame 1004. Annotated tracking video: <code>[Google Drive Link Placeholder: &lt;INSERT_DRIVE_URL_HERE&gt;]</code>. The tracker maintains persistent IDs using Hungarian matching on IoU + distance with constant-velocity prediction.
+  Tracking was evaluated on the 1440-frame table sequence (1280x720 @ 24.0 fps). Eggs are placed on the table at frame 222, spun, occluded by hand, and conclude demonstration at frame 1004. Annotated tracking video: <a href="https://drive.google.com/file/d/1mCqreRT5OFuGm49fvgxRKH-TVVOL1kWt/view?usp=sharing">https://drive.google.com/file/d/1mCqreRT5OFuGm49fvgxRKH-TVVOL1kWt/view?usp=sharing</a>. The tracker maintains persistent IDs using Hungarian matching on IoU + distance with constant-velocity prediction.
 </p>
 <ul>
   <li><strong>Fingertip Leakage Resolution:</strong> At frame 600, demonstrator hand contact caused baseline thresholding to leak into fingers. Incorporating YCrCb skin-color gating (Cr &isin; [135, 175], Cb &isin; [80, 125]) and larger opening eliminated false skin contour (gating reduced the total foreground mask by 2296 px over the whole frame; restricted to crop x in [200, 460], y in [300, 430], the mask was reduced by 1304 px).</li>
@@ -435,6 +435,11 @@
   <li><strong>Re-Identification Limitations:</strong> Spatial re-ID succeeds in this sequence primarily because only one track is lost at a time while the other egg remains active on the table. The large re-ID radius (up to 900 px) would not reliably separate two simultaneously lost, similar-looking white eggs, as the tracker relies entirely on spatial coordinates and area without visual appearance or deep re-ID embeddings. Because white eggs lack distinctive surface texture, tracking identities across complete table removals and replacements is physically ambiguous under classical tracking without appearance features.</li>
   <li><strong>Future Extensions:</strong> Fine-tuning a deep semantic segmentation model (e.g. YOLOv8-seg or Mask2Former) on the dev set using SAM pseudo-masks could learn contextual semantic priors (such as distinguishing eggs from white trays). Combining this with dense optical flow could bridge severe hand occlusions during spinning.</li>
 </ol>
+
+<h2>7. AI Assistance Disclosure</h2>
+<p>
+  The author of this repository and project is K. Sree Varun Aahil. Claude (Anthropic) was used for planning, reviewing outputs, and drafting prompts. A Gemini-based coding agent in Antigravity was used to write and run the code in this repository. SAM (<code>vit_b</code>) was used to generate ground-truth masks from human-clicked point and box prompts. Every number, metric, and count in the report comes directly from running the code in this repository. The author thoroughly reviewed the results, verified the findings, and can explain all methods.
+</p>
 
 </body>
 </html>

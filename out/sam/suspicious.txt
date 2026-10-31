@@ -1,0 +1,4 @@
+# Suspicious SAM Masks Audit
+# Flagged if area > 40% of image or touching > half of image border
+# Total flagged: 0 / 110
+

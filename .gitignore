@@ -1,14 +1,22 @@
-data/
-out/
-video/
+# Raw datasets, video inputs, weights, virtual environment, and caches
+/data/
+/video/
+/weights/
+.venv/
+__pycache__/
+*.pyc
 *.pth
 *.mp4
 *.avi
-__pycache__/
-.venv/
-*.pyc
-
-weights/
 *.zip
 report/figures/events/
+
+# Heavy outputs (masks, overlays, galleries, contact sheets, and media)
+out/**/masks/
+out/**/overlays/
+out/**/events/
+out/**/*.png
+out/**/*.jpg
+out/**/*.mp4
+
 

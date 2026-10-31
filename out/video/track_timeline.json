@@ -1,0 +1,118 @@
+[
+  {
+    "track_id": 1,
+    "birth_frame": 222,
+    "last_matched_frame": 999,
+    "matched_frames_count": 721,
+    "gaps": [
+      {
+        "gap_start": 480,
+        "gap_end": 480,
+        "length": 1
+      },
+      {
+        "gap_start": 752,
+        "gap_end": 799,
+        "length": 48
+      },
+      {
+        "gap_start": 802,
+        "gap_end": 809,
+        "length": 8
+      }
+    ],
+    "physical_egg_description": "Hard-boiled egg; placed in center of table at frame 222, remains stationary through Egg 2's spin tests until frame 751; picked up by hand, carried across to right table and spun smoothly from frame 808 until circular wipe transition at frame 999.",
+    "visual_verification": "Verified",
+    "verified_stills": [
+      "frame_0222.png",
+      "frame_0507.png",
+      "frame_0546.png",
+      "frame_0656.png",
+      "frame_0689.png",
+      "frame_0751.png",
+      "frame_0810.png",
+      "frame_0814.png",
+      "frame_0999.png"
+    ]
+  },
+  {
+    "track_id": 2,
+    "birth_frame": 222,
+    "last_matched_frame": 1004,
+    "matched_frames_count": 652,
+    "gaps": [
+      {
+        "gap_start": 479,
+        "gap_end": 482,
+        "length": 4
+      },
+      {
+        "gap_start": 508,
+        "gap_end": 545,
+        "length": 38
+      },
+      {
+        "gap_start": 547,
+        "gap_end": 547,
+        "length": 1
+      },
+      {
+        "gap_start": 550,
+        "gap_end": 550,
+        "length": 1
+      },
+      {
+        "gap_start": 552,
+        "gap_end": 553,
+        "length": 2
+      },
+      {
+        "gap_start": 555,
+        "gap_end": 555,
+        "length": 1
+      },
+      {
+        "gap_start": 649,
+        "gap_end": 650,
+        "length": 2
+      },
+      {
+        "gap_start": 652,
+        "gap_end": 654,
+        "length": 3
+      },
+      {
+        "gap_start": 657,
+        "gap_end": 688,
+        "length": 32
+      },
+      {
+        "gap_start": 695,
+        "gap_end": 715,
+        "length": 21
+      },
+      {
+        "gap_start": 721,
+        "gap_end": 738,
+        "length": 18
+      },
+      {
+        "gap_start": 740,
+        "gap_end": 747,
+        "length": 8
+      }
+    ],
+    "physical_egg_description": "Raw egg; placed on left table at frame 222, picked up at frame 507, carried across to right table and spun for raw-egg spin test (frames 546-656); returned to left table by hand at frame 689, remaining stationary on left table until circular wipe transition at frame 1004.",
+    "visual_verification": "Verified",
+    "verified_stills": [
+      "frame_0222.png",
+      "frame_0507.png",
+      "frame_0546.png",
+      "frame_0656.png",
+      "frame_0689.png",
+      "frame_0751.png",
+      "frame_0999.png",
+      "frame_1004.png"
+    ]
+  }
+]

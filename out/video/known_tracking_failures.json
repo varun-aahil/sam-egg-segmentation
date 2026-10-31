@@ -1,0 +1,37 @@
+{
+  "frame_480_failure": {
+    "frame": 480,
+    "status": "0 eggs tracked (missed detection)",
+    "visual_observation": "Two eggs visible on table with demonstrator hand in physical contact spinning the egg",
+    "measured_solidity": 0.7673,
+    "solidity_threshold": 0.78,
+    "root_cause": "Demonstrator fingers occluded the egg contour, causing solidity (0.7673) to drop below the minimum convexity threshold (0.78), causing component rejection.",
+    "solidity_relaxation_experiment": {
+      "tested_solidity_threshold": 0.75,
+      "recovered_frame_480": true,
+      "false_positive_frames_introduced": 53,
+      "false_positive_range": "Frames 244 to 298 (table reflection and demonstrator hand gesture produced a 3rd component with solidity ~0.76 at center x ~ 569, y ~ 442)",
+      "conclusion": "Global solidity relaxation to 0.75 introduces widespread false-positive blob detections. The 0.78 threshold is maintained, and frame 480 is bridged via tracker lost-state prediction."
+    }
+  },
+  "audit_range_222_to_1000": {
+    "monitored_range": "Frames 222 to 1004",
+    "total_frames_in_range": 783,
+    "active_detection_frames": 782,
+    "missed_detection_frames": 1,
+    "missed_frame_indices": [
+      480
+    ],
+    "range_450_to_520_misses": [
+      480
+    ]
+  },
+  "zero_detection_frames_breakdown_658_total": {
+    "intro_animated_title_card_frames_0_to_204": 205,
+    "empty_table_pre_placement_frames_205_to_221": 17,
+    "experiment_missed_detection_frame_480": 1,
+    "empty_table_post_removal_frames_1005_to_1014": 10,
+    "outro_credits_title_card_frames_1015_to_1439": 425,
+    "total_verified": 658
+  }
+}

@@ -1,0 +1,250 @@
+{
+  "description": "Measurement of egg pixel loss due to YCrCb skin gating across 6 video frames (frame 600 and 5 hand-free frames over frames 222-1004).",
+  "skin_color_cluster": {
+    "cr_range": [
+      135,
+      175
+    ],
+    "cb_range": [
+      80,
+      125
+    ]
+  },
+  "frames": {
+    "250": {
+      "frame_idx": 250,
+      "hand_touching_egg": false,
+      "eggs": [
+        {
+          "egg_label": "Egg 2 (left table)",
+          "centroid": [
+            136.2,
+            415.6
+          ],
+          "total_gating_off_area_px": 18955,
+          "evaluated_body_area_px": 18955,
+          "skin_pixels_removed": 78,
+          "skin_removal_fraction": 0.00412,
+          "skin_removal_pct": "0.41%",
+          "post_morphology_loss_px": 17,
+          "post_morphology_loss_fraction": 0.0009,
+          "post_morphology_loss_pct": "0.09%",
+          "note": "Full egg component (no hand contact)"
+        },
+        {
+          "egg_label": "Egg 1 (middle-right table)",
+          "centroid": [
+            313.7,
+            439.2
+          ],
+          "total_gating_off_area_px": 18739,
+          "evaluated_body_area_px": 18739,
+          "skin_pixels_removed": 64,
+          "skin_removal_fraction": 0.00342,
+          "skin_removal_pct": "0.34%",
+          "post_morphology_loss_px": 0,
+          "post_morphology_loss_fraction": 0.0,
+          "post_morphology_loss_pct": "0.00%",
+          "note": "Full egg component (no hand contact)"
+        }
+      ]
+    },
+    "350": {
+      "frame_idx": 350,
+      "hand_touching_egg": false,
+      "eggs": [
+        {
+          "egg_label": "Egg 2 (left table)",
+          "centroid": [
+            134.8,
+            404.9
+          ],
+          "total_gating_off_area_px": 20826,
+          "evaluated_body_area_px": 20826,
+          "skin_pixels_removed": 72,
+          "skin_removal_fraction": 0.00346,
+          "skin_removal_pct": "0.35%",
+          "post_morphology_loss_px": 35,
+          "post_morphology_loss_fraction": 0.00168,
+          "post_morphology_loss_pct": "0.17%",
+          "note": "Full egg component (no hand contact)"
+        },
+        {
+          "egg_label": "Egg 1 (middle-right table)",
+          "centroid": [
+            313.7,
+            439.4
+          ],
+          "total_gating_off_area_px": 18733,
+          "evaluated_body_area_px": 18733,
+          "skin_pixels_removed": 27,
+          "skin_removal_fraction": 0.00144,
+          "skin_removal_pct": "0.14%",
+          "post_morphology_loss_px": 0,
+          "post_morphology_loss_fraction": 0.0,
+          "post_morphology_loss_pct": "0.00%",
+          "note": "Full egg component (no hand contact)"
+        }
+      ]
+    },
+    "450": {
+      "frame_idx": 450,
+      "hand_touching_egg": false,
+      "eggs": [
+        {
+          "egg_label": "Egg 2 (left table)",
+          "centroid": [
+            137.0,
+            414.7
+          ],
+          "total_gating_off_area_px": 18555,
+          "evaluated_body_area_px": 18555,
+          "skin_pixels_removed": 34,
+          "skin_removal_fraction": 0.00183,
+          "skin_removal_pct": "0.18%",
+          "post_morphology_loss_px": 47,
+          "post_morphology_loss_fraction": 0.00253,
+          "post_morphology_loss_pct": "0.25%",
+          "note": "Full egg component (no hand contact)"
+        },
+        {
+          "egg_label": "Egg 1 (middle-right table)",
+          "centroid": [
+            314.4,
+            438.1
+          ],
+          "total_gating_off_area_px": 18377,
+          "evaluated_body_area_px": 18377,
+          "skin_pixels_removed": 0,
+          "skin_removal_fraction": 0.0,
+          "skin_removal_pct": "0.00%",
+          "post_morphology_loss_px": 0,
+          "post_morphology_loss_fraction": 0.0,
+          "post_morphology_loss_pct": "0.00%",
+          "note": "Full egg component (no hand contact)"
+        }
+      ]
+    },
+    "600": {
+      "frame_idx": 600,
+      "hand_touching_egg": true,
+      "eggs": [
+        {
+          "egg_label": "Egg 1 (middle-right table)",
+          "centroid": [
+            316.7,
+            434.3
+          ],
+          "total_gating_off_area_px": 19451,
+          "evaluated_body_area_px": 17146,
+          "skin_pixels_removed": 0,
+          "skin_removal_fraction": 0.0,
+          "skin_removal_pct": "0.00%",
+          "post_morphology_loss_px": 0,
+          "post_morphology_loss_fraction": 0.0,
+          "post_morphology_loss_pct": "0.00%",
+          "note": "Excludes 2305 px band (15 px radius) around fingertip contact region"
+        },
+        {
+          "egg_label": "Egg 3 (right spinning)",
+          "centroid": [
+            849.7,
+            481.4
+          ],
+          "total_gating_off_area_px": 17645,
+          "evaluated_body_area_px": 17645,
+          "skin_pixels_removed": 0,
+          "skin_removal_fraction": 0.0,
+          "skin_removal_pct": "0.00%",
+          "post_morphology_loss_px": 0,
+          "post_morphology_loss_fraction": 0.0,
+          "post_morphology_loss_pct": "0.00%",
+          "note": "Full egg component (no hand contact)"
+        }
+      ]
+    },
+    "850": {
+      "frame_idx": 850,
+      "hand_touching_egg": false,
+      "eggs": [
+        {
+          "egg_label": "Egg 4 (left table)",
+          "centroid": [
+            143.6,
+            387.8
+          ],
+          "total_gating_off_area_px": 17467,
+          "evaluated_body_area_px": 17467,
+          "skin_pixels_removed": 0,
+          "skin_removal_fraction": 0.0,
+          "skin_removal_pct": "0.00%",
+          "post_morphology_loss_px": 0,
+          "post_morphology_loss_fraction": 0.0,
+          "post_morphology_loss_pct": "0.00%",
+          "note": "Full egg component (no hand contact)"
+        },
+        {
+          "egg_label": "Egg 6 (right spinning/resting)",
+          "centroid": [
+            782.9,
+            498.6
+          ],
+          "total_gating_off_area_px": 19298,
+          "evaluated_body_area_px": 19298,
+          "skin_pixels_removed": 64,
+          "skin_removal_fraction": 0.00332,
+          "skin_removal_pct": "0.33%",
+          "post_morphology_loss_px": 70,
+          "post_morphology_loss_fraction": 0.00363,
+          "post_morphology_loss_pct": "0.36%",
+          "note": "Full egg component (no hand contact)"
+        }
+      ]
+    },
+    "950": {
+      "frame_idx": 950,
+      "hand_touching_egg": false,
+      "eggs": [
+        {
+          "egg_label": "Egg 4 (left table)",
+          "centroid": [
+            143.5,
+            387.8
+          ],
+          "total_gating_off_area_px": 17442,
+          "evaluated_body_area_px": 17442,
+          "skin_pixels_removed": 40,
+          "skin_removal_fraction": 0.00229,
+          "skin_removal_pct": "0.23%",
+          "post_morphology_loss_px": 47,
+          "post_morphology_loss_fraction": 0.00269,
+          "post_morphology_loss_pct": "0.27%",
+          "note": "Full egg component (no hand contact)"
+        },
+        {
+          "egg_label": "Egg 6 (right spinning/resting)",
+          "centroid": [
+            831.5,
+            529.5
+          ],
+          "total_gating_off_area_px": 18863,
+          "evaluated_body_area_px": 18863,
+          "skin_pixels_removed": 22,
+          "skin_removal_fraction": 0.00117,
+          "skin_removal_pct": "0.12%",
+          "post_morphology_loss_px": 26,
+          "post_morphology_loss_fraction": 0.00138,
+          "post_morphology_loss_pct": "0.14%",
+          "note": "Full egg component (no hand contact)"
+        }
+      ]
+    }
+  },
+  "summary": {
+    "frames_evaluated": 6,
+    "total_egg_instances_evaluated": 12,
+    "max_egg_skin_removal_pct": "0.41%",
+    "any_egg_exceeds_1_pct": false,
+    "conclusion": "Across all 6 measured frames (12 egg instances), YCrCb skin gating removed between 0.00% and 0.41% of pixels from any egg body mask (well below 1.0%), confirming that white eggshells on the wooden table do not fall into the skin chrominance cluster."
+  }
+}

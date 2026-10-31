@@ -1,0 +1,76 @@
+{
+  "description": "Composition check re-weighting dev per-category mean IoUs by eval category counts to quantify the impact of domain shift.",
+  "note": "This is a descriptive check on 22 images, not a significance test.",
+  "dataset_split_sizes": {
+    "dev_images": 88,
+    "eval_images": 22,
+    "total_images": 110
+  },
+  "metrics": {
+    "dev_mean_iou": 0.4018,
+    "eval_mean_iou": 0.3196,
+    "predicted_eval_iou_from_reweighting": 0.3324,
+    "total_dev_eval_gap": 0.0821,
+    "gap_explained_by_category_composition": 0.0694,
+    "gap_unexplained_residual": 0.0127,
+    "share_of_gap_explained_pct": 84.5
+  },
+  "per_category_weights": {
+    "Tabletop / high-contrast background": {
+      "eval_count": 4,
+      "eval_weight": 0.1818,
+      "dev_mean_iou": 0.5353,
+      "eval_mean_iou": 0.6997,
+      "weighted_dev_contribution": 0.0973
+    },
+    "White egg on white tray / fridge interior": {
+      "eval_count": 2,
+      "eval_weight": 0.0909,
+      "dev_mean_iou": 0.1003,
+      "eval_mean_iou": 0.0562,
+      "weighted_dev_contribution": 0.0091
+    },
+    "Egg on container / lid / plain surface": {
+      "eval_count": 10,
+      "eval_weight": 0.4545,
+      "dev_mean_iou": 0.3161,
+      "eval_mean_iou": 0.219,
+      "weighted_dev_contribution": 0.1437
+    },
+    "Hand holding egg / fingers occluding": {
+      "eval_count": 2,
+      "eval_weight": 0.0909,
+      "dev_mean_iou": 0.2822,
+      "eval_mean_iou": 0.1098,
+      "weighted_dev_contribution": 0.0257
+    },
+    "Egg in boiling water / submerged": {
+      "eval_count": 3,
+      "eval_weight": 0.1364,
+      "dev_mean_iou": 0.2099,
+      "eval_mean_iou": 0.3072,
+      "weighted_dev_contribution": 0.0286
+    },
+    "Multiple touching eggs": {
+      "eval_count": 1,
+      "eval_weight": 0.0455,
+      "dev_mean_iou": 0.6148,
+      "eval_mean_iou": 0.7893,
+      "weighted_dev_contribution": 0.0279
+    },
+    "Foliage / herbs in background (specular highlights)": {
+      "eval_count": 0,
+      "eval_weight": 0.0,
+      "dev_mean_iou": 0.6805,
+      "eval_mean_iou": null,
+      "weighted_dev_contribution": 0.0
+    },
+    "Backlit / extreme shadows": {
+      "eval_count": 0,
+      "eval_weight": 0.0,
+      "dev_mean_iou": 0.0071,
+      "eval_mean_iou": null,
+      "weighted_dev_contribution": 0.0
+    }
+  }
+}

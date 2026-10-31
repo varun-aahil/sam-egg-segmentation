@@ -1,0 +1,15 @@
+{
+  "split": "eval",
+  "n_images": 22,
+  "pixel_iou_mean": 0.31963247811741957,
+  "pixel_iou_median": 0.25015910757476,
+  "pixel_dice_mean": 0.4239381952412831,
+  "pixel_dice_median": 0.40017570599230967,
+  "pixel_precision_mean": 0.34486212310623504,
+  "pixel_recall_mean": 0.8748865571217272,
+  "det_precision_mean": 0.2757575757575757,
+  "det_recall_mean": 0.4621212121212121,
+  "det_f1_mean": 0.3205627705627705,
+  "count_error_mean": 1.6818181818181819,
+  "count_error_abs_mean": 1.7727272727272727
+}
